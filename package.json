@@ -1,0 +1,51 @@
+{
+  "name": "ciphered-microloan-bazaar",
+  "version": "1.0.0",
+  "description": "FHE-enabled microloan marketplace for developing countries",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.ts --network sepolia",
+    "deploy:update": "hardhat run scripts/deploy-and-update.ts --network sepolia",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "test": "hardhat test",
+    "test:deployment": "hardhat run scripts/test-deployment.ts --network sepolia",
+    "test:coverage": "hardhat coverage",
+    "clean": "hardhat clean",
+    "verify": "hardhat verify --network sepolia",
+    "node": "hardhat node",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:install": "cd frontend && npm install",
+    "setup": "npm install && npm run frontend:install",
+    "setup:github": "ts-node scripts/setup-github.ts",
+    "status": "ts-node scripts/check-status.ts",
+    "dev": "npm run frontend:dev",
+    "build": "npm run compile && npm run frontend:build",
+    "deploy:vercel": "cd frontend && npx vercel --prod",
+    "deploy:all": "npm run deploy:update && npm run deploy:vercel"
+  },
+  "keywords": [
+    "fhe",
+    "microloan",
+    "defi",
+    "privacy",
+    "zama"
+  ],
+  "author": "0rangel-woodrown",
+  "license": "MIT",
+  "devDependencies": {
+    "@fhevm/solidity": "^0.8.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "dotenv": "^16.0.0",
+    "hardhat": "^2.19.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
+  },
+  "dependencies": {
+    "fhevm": "^0.6.2",
+    "ethers": "^6.0.0",
+    "@octokit/rest": "^20.0.0"
+  }
+}

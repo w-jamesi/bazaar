@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "npm install && cd frontend && npm install",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_CIPHERED_MICROLOAN_BAZAAR_ADDRESS": "@contract_address",
+    "VITE_CHAIN_ID": "11155111",
+    "VITE_NETWORK_NAME": "sepolia",
+    "VITE_RPC_URL": "https://sepolia.drpc.org"
+  },
+  "functions": {
+    "frontend/dist/**": {
+      "maxDuration": 10
+    }
+  }
+}
