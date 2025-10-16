@@ -5,7 +5,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const VERCEL_TOKEN = '1fxufR8OOMHgIJA1sKNHVNVI';
-const PROJECT_NAME = 'bazaar-hub';
+const PROJECT_NAME = 'fhe-microloan-bazaar';
 
 async function deployToVercel() {
   try {
@@ -53,7 +53,7 @@ async function deployToVercel() {
     });
     
     console.log('✅ Deployment successful!');
-    console.log('📱 Your app is live at: https://bazaar-hub.vercel.app/');
+    console.log('📱 Your app is live at: https://fhe-microloan-bazaar.vercel.app/');
     
     // Clean up
     fs.rmSync(tempDir, { recursive: true });

@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "name": "fhe-microloan-bazaar",
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install && cd frontend && npm install",

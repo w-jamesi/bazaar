@@ -2,7 +2,7 @@
 
 # Vercel deployment script
 VERCEL_TOKEN="1fxufR8OOMHgIJA1sKNHVNVI"
-PROJECT_NAME="bazaar-hub"
+PROJECT_NAME="fhe-microloan-bazaar"
 
 echo "🚀 Starting Vercel deployment..."
 
@@ -62,7 +62,7 @@ DEPLOYMENT_URL=$(echo "$DEPLOY_RESPONSE" | grep -o '"url":"[^"]*' | cut -d'"' -f
 if [ ! -z "$DEPLOYMENT_URL" ]; then
     echo "✅ Deployment successful!"
     echo "📱 Your app is live at: https://$DEPLOYMENT_URL"
-    echo "🌐 Custom domain: https://bazaar-hub.vercel.app/"
+    echo "🌐 Custom domain: https://fhe-microloan-bazaar.vercel.app/"
 else
     echo "❌ Deployment failed. Response: $DEPLOY_RESPONSE"
 fi

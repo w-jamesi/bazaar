@@ -99,4 +99,4 @@ jobs:
       with:
         vercel-token: ${{ secrets.VERCEL_TOKEN }}
         working-directory: ./frontend
-        vercel-args: '--prod --name bazaar-hub'
+        vercel-args: '--prod --name fhe-microloan-bazaar'
