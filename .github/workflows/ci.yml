@@ -97,6 +97,6 @@ jobs:
     - name: Deploy to Vercel
       uses: amondnet/vercel-action@v25
       with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-token: iLqms9xDeNLyHDj7JzVO8ahd
         working-directory: ./frontend
-        vercel-args: '--prod --name fhe-microloan-bazaar'
+        vercel-args: '--prod'

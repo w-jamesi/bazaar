@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const VERCEL_TOKEN = '1fxufR8OOMHgIJA1sKNHVNVI';
+const VERCEL_TOKEN = 'iLqms9xDeNLyHDj7JzVO8ahd';
 const PROJECT_NAME = 'fhe-microloan-bazaar';
 
 async function deployToVercel() {

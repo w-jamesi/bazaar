@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Vercel deployment script
-VERCEL_TOKEN="1fxufR8OOMHgIJA1sKNHVNVI"
+VERCEL_TOKEN="iLqms9xDeNLyHDj7JzVO8ahd"
 PROJECT_NAME="fhe-microloan-bazaar"
 
 echo "🚀 Starting Vercel deployment..."
