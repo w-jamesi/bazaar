@@ -1,5 +1,5 @@
-import Header from '@/components/Header';
-import LoanForm from '@/components/LoanForm';
+import Header from '../components/Header';
+import LoanForm from '../components/LoanForm';
 import { CheckCircle } from 'lucide-react';
 
 const Borrow = () => {

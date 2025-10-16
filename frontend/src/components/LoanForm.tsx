@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { toast } from 'sonner';
 import { useAccount } from 'wagmi';
 import { Loader2, Shield } from 'lucide-react';
-import { useMicroloanContract } from '@/hooks/useMicroloanContract';
+import { useMicroloanContract } from '../hooks/useMicroloanContract';
 
 const LoanForm = () => {
   const { address, isConnected } = useAccount();
@@ -23,6 +23,7 @@ const LoanForm = () => {
   const [pastDefaults, setPastDefaults] = useState('0');
   const [communityScore, setCommunityScore] = useState('5');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progress, setProgress] = useState<string>('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +38,11 @@ const LoanForm = () => {
       return;
     }
 
+    // Immediately show overlay before any heavy async work
     setIsSubmitting(true);
+    setProgress('Preparing submission...');
+    // Yield to the browser so the overlay renders before encryption begins
+    await new Promise((r) => setTimeout(r, 0));
 
     try {
       // Submit loan application with encrypted data
@@ -50,7 +55,7 @@ const LoanForm = () => {
         pastDefaults: Number(pastDefaults),
         communityScore: Number(communityScore),
         purpose: Number(purpose),
-      });
+      }, (msg) => setProgress(msg));
 
       console.log('Loan application submitted:', result);
       console.log('Loan ID:', result.loanId?.toString());
@@ -66,9 +71,11 @@ const LoanForm = () => {
       setPurpose('0');
     } catch (error: any) {
       console.error('Error submitting loan:', error);
-      toast.error(`Submission failed: ${error.message || 'Please try again'}`);
+      const reason = error?.reason || error?.shortMessage || error?.message;
+      toast.error(`Submission failed: ${reason || 'Please try again'}`);
     } finally {
       setIsSubmitting(false);
+      setProgress('');
     }
   };
 
@@ -84,24 +91,41 @@ const LoanForm = () => {
         </div>
       </div>
 
+      {/* Full-screen progress overlay */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[60] bg-background/70 backdrop-blur-sm flex items-center justify-center">
+          <div className="w-full max-w-md rounded-xl border bg-card p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-3">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Submitting loan...</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">{progress || 'Processing...'}</p>
+            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary animate-pulse" style={{ width: '66%' }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <Label htmlFor="amount" className="text-base mb-2 block">
-            Loan Amount (USD)
+            Loan Amount (ETH)
           </Label>
           <Input
             id="amount"
             type="number"
-            placeholder="Enter loan amount"
+            placeholder="Enter loan amount in ETH"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             required
-            min="1000"
-            max="100000"
+            min="0.1"
+            max="50"
+            step="0.01"
             className="text-lg h-12"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            This amount will be encrypted using homomorphic encryption (Min $1,000, Max $100,000)
+            This amount will be encrypted using homomorphic encryption (Min 0.1 ETH, Max 50 ETH)
           </p>
         </div>
 
@@ -166,20 +190,21 @@ const LoanForm = () => {
 
           <div>
             <Label htmlFor="monthlyRevenue" className="text-base mb-2 block">
-              Monthly Revenue (USD)
+              Monthly Revenue (ETH)
             </Label>
             <Input
               id="monthlyRevenue"
               type="number"
-              placeholder="5000"
+              placeholder="2.5"
               value={monthlyRevenue}
               onChange={(e) => setMonthlyRevenue(e.target.value)}
               required
               min="0"
+              step="0.01"
               className="text-lg h-12"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Your monthly revenue (encrypted)
+              Your monthly revenue in ETH (encrypted)
             </p>
           </div>
         </div>

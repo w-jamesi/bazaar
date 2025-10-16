@@ -1,4 +1,4 @@
-import { getAddress, hexlify } from 'ethers';
+import { getAddress, hexlify, AbiCoder, zeroPadValue } from 'ethers';
 
 let fheInstance: any = null;
 
@@ -216,7 +216,9 @@ export const requestDecryption = async (
  * Helper to convert encrypted data to contract input format
  */
 export const toContractInput = (encrypted: string): string => {
-  return encrypted;
+  // ABI shows submitLoanApplication expects bytes32 handles.
+  // Ensure 32-byte hex by left-padding.
+  return zeroPadValue(encrypted, 32);
 };
 
 /**

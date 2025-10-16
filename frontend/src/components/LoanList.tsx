@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { Loader2, TrendingUp, Calendar, DollarSign, AlertCircle } from 'lucide-react';
-import { useMicroloanContract, LoanInfo, EvaluationInfo } from '@/hooks/useMicroloanContract';
+import { useMicroloanContract, LoanInfo, EvaluationInfo } from '../hooks/useMicroloanContract';
 import { useAccount } from 'wagmi';
 import { toast } from 'sonner';
 
@@ -66,13 +66,15 @@ const LoanList = () => {
 
       setTotalLoans(Number(stats.totalLoans));
 
-      // Load approved loans only
+      // Load visible loans (show Submitted and onward)
       const loanPromises: Promise<LoanData | null>[] = [];
       for (let i = 0; i < Number(stats.totalLoans); i++) {
         loanPromises.push(
           (async () => {
             const info = await getLoanInfo(i);
-            if (!info || info.status !== 4) return null; // Only show Approved loans
+            if (!info) return null;
+            // Show all non-defaulted, active requests so lenders can browse pipeline
+            if (info.status === 9) return null; // Defaulted
 
             const evaluation = await getEvaluationInfo(i);
             return { loanId: i, info, evaluation: evaluation || undefined };
@@ -108,7 +110,7 @@ const LoanList = () => {
     setFundingLoanId(loanId);
     try {
       await fundLoan(loanId, Number(amount));
-      toast.success(`Successfully funded loan #${loanId} with $${amount}!`);
+      toast.success(`Successfully funded loan #${loanId} with ${amount} ETH!`);
 
       // Reload loans
       await loadLoans();
@@ -187,9 +189,9 @@ const LoanList = () => {
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-5 h-5 text-primary" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Approved Amount</p>
+                    <p className="text-xs text-muted-foreground">Approved Amount (ETH)</p>
                     <p className="font-bold text-foreground">
-                      ${loan.evaluation?.approvedAmount.toString() || 'N/A'}
+                      {loan.evaluation ? Number(loan.evaluation.approvedAmount).toString() : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -200,7 +202,7 @@ const LoanList = () => {
                     <p className="text-xs text-muted-foreground">Interest Rate</p>
                     <p className="font-bold text-foreground">
                       {loan.evaluation
-                        ? `${(loan.evaluation.interestRate / 100).toFixed(2)}%`
+                        ? `${(Number(loan.evaluation.interestRate) / 100).toFixed(2)}%`
                         : 'N/A'}
                     </p>
                   </div>
@@ -220,7 +222,7 @@ const LoanList = () => {
               <div className="flex items-center gap-2 mt-4">
                 <input
                   type="number"
-                  placeholder="Investment Amount (USD)"
+                  placeholder="Investment Amount (ETH)"
                   className="flex-1 px-4 py-2 border rounded-lg"
                   value={fundAmount[loan.loanId] || ''}
                   onChange={(e) =>

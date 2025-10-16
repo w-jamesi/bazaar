@@ -27,7 +27,7 @@ export const zamaFheSepoliaTestnet = {
 
 export const config = getDefaultConfig({
   appName: 'CipheredMicroloan Bazaar',
-  projectId: process.env.VITE_WALLETCONNECT_PROJECT_ID || '2ca57f59c4f7b855c87dc29aa9b68b5f', // Placeholder for demo
+  projectId: '2ca57f59c4f7b855c87dc29aa9b68b5f', // Hardcoded WalletConnect Project ID
   chains: [zamaFheSepoliaTestnet, sepolia, mainnet],
   ssr: false,
 });

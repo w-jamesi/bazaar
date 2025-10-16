@@ -1,6 +1,6 @@
-import Header from '@/components/Header';
-import LoanList from '@/components/LoanList';
-import { Card } from '@/components/ui/card';
+import Header from '../components/Header';
+import LoanList from '../components/LoanList';
+import { Card } from '../components/ui/card';
 import { TrendingUp, Users, Shield } from 'lucide-react';
 
 const Lend = () => {

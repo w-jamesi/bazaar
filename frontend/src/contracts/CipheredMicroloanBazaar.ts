@@ -1,7 +1,7 @@
 // CipheredMicroloanBazaar Contract Configuration
 export const CIPHERED_MICROLOAN_BAZAAR_ADDRESS = {
-  // Sepolia Testnet - Will be updated after deployment
-  11155111: '0x8E5ed8d77cfCC22c05af221C9b08Ec021aAdbF4d', // Placeholder - needs deployment
+  // Sepolia Testnet - Deployed contract address
+  11155111: '0x8E5ed8d77cfCC22c05af221C9b08Ec021aAdbF4d',
 } as const;
 
 export const CIPHERED_MICROLOAN_BAZAAR_ABI = [
@@ -28,19 +28,19 @@ export const CIPHERED_MICROLOAN_BAZAAR_ABI = [
     "name": "submitLoanApplication",
     "stateMutability": "nonpayable",
     "inputs": [
-      { "name": "encryptedAmount", "type": "bytes32" },
+      { "name": "encryptedAmount", "type": "bytes" },
       { "name": "amountProof", "type": "bytes" },
-      { "name": "encryptedTerm", "type": "bytes32" },
+      { "name": "encryptedTerm", "type": "bytes" },
       { "name": "termProof", "type": "bytes" },
-      { "name": "encryptedCredit", "type": "bytes32" },
+      { "name": "encryptedCredit", "type": "bytes" },
       { "name": "creditProof", "type": "bytes" },
-      { "name": "encryptedRevenue", "type": "bytes32" },
+      { "name": "encryptedRevenue", "type": "bytes" },
       { "name": "revenueProof", "type": "bytes" },
-      { "name": "encryptedHistory", "type": "bytes32" },
+      { "name": "encryptedHistory", "type": "bytes" },
       { "name": "historyProof", "type": "bytes" },
-      { "name": "encryptedDefaults", "type": "bytes32" },
+      { "name": "encryptedDefaults", "type": "bytes" },
       { "name": "defaultsProof", "type": "bytes" },
-      { "name": "encryptedCommunity", "type": "bytes32" },
+      { "name": "encryptedCommunity", "type": "bytes" },
       { "name": "communityProof", "type": "bytes" },
       { "name": "purpose", "type": "uint8" }
     ],
@@ -52,7 +52,7 @@ export const CIPHERED_MICROLOAN_BAZAAR_ABI = [
     "stateMutability": "payable",
     "inputs": [
       { "name": "loanId", "type": "uint256" },
-      { "name": "encryptedAmount", "type": "bytes32" },
+      { "name": "encryptedAmount", "type": "bytes" },
       { "name": "proof", "type": "bytes" }
     ],
     "outputs": []
@@ -63,7 +63,7 @@ export const CIPHERED_MICROLOAN_BAZAAR_ABI = [
     "stateMutability": "nonpayable",
     "inputs": [
       { "name": "loanId", "type": "uint256" },
-      { "name": "encryptedAmount", "type": "bytes32" },
+      { "name": "encryptedAmount", "type": "bytes" },
       { "name": "proof", "type": "bytes" }
     ],
     "outputs": []

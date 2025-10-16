@@ -4,7 +4,7 @@ import { BrowserProvider, Contract } from 'ethers';
 import {
   CIPHERED_MICROLOAN_BAZAAR_ADDRESS,
   CIPHERED_MICROLOAN_BAZAAR_ABI,
-} from '@/contracts/CipheredMicroloanBazaar';
+} from '../contracts/CipheredMicroloanBazaar';
 import {
   initializeFHEVM,
   getFHEVMInstance,
@@ -15,9 +15,11 @@ import {
   toContractInput,
   toProofBytes,
   isFheInitialized,
-} from '@/lib/fhevm';
+} from '../lib/fhevm';
 
 export interface LoanApplicationParams {
+  // Amounts are entered in ETH on the UI. We scale them to integers before
+  // encryption to satisfy TFHE integer input requirements.
   requestedAmount: number;
   requestedTerm: number;
   creditScore: number;
@@ -68,12 +70,10 @@ export const useMicroloanContract = () => {
         // Initialize FHEVM (no longer needs provider and chainId)
         await initializeFHEVM();
 
-        // Get contract address
-        const contractAddress = CIPHERED_MICROLOAN_BAZAAR_ADDRESS[
-          chain.id as keyof typeof CIPHERED_MICROLOAN_BAZAAR_ADDRESS
-        ];
+        // Get contract address - hardcoded for Sepolia
+        const contractAddress = CIPHERED_MICROLOAN_BAZAAR_ADDRESS[11155111]; // Sepolia chain ID
 
-        if (!contractAddress || contractAddress === '0x0000000000000000000000000000000000000000') {
+        if (!contractAddress) {
           console.warn(`Contract not deployed on chain ${chain.id}`);
           return;
         }
@@ -101,13 +101,14 @@ export const useMicroloanContract = () => {
    * Submit a loan application with encrypted data
    */
   const submitLoanApplication = useCallback(
-    async (params: LoanApplicationParams) => {
+    async (params: LoanApplicationParams, onProgress?: (message: string) => void) => {
       if (!contract || !isInitialized || !address || !chain) {
         throw new Error('Contract not initialized');
       }
 
       setIsLoading(true);
       try {
+        onProgress?.('Initializing FHE runtime...');
         if (!isFheInitialized()) {
           throw new Error('FHE not initialized');
         }
@@ -116,37 +117,50 @@ export const useMicroloanContract = () => {
           chain.id as keyof typeof CIPHERED_MICROLOAN_BAZAAR_ADDRESS
         ];
 
-        // Encrypt all sensitive data
+        onProgress?.('Encrypting requested amount...');
+        // Scale ETH to 1e4 (0.0001 ETH units) to fit contract policy [1_000..100_000]
+        // 0.1 ETH -> 1,000 ; 10 ETH -> 100,000
+        const ETH_SCALE = 10_000; // 1e4
+        const requestedAmountScaled = Math.round(params.requestedAmount * ETH_SCALE);
+        const monthlyRevenueScaled = Math.round(params.monthlyRevenue * ETH_SCALE);
+
+        // Encrypt all sensitive data (integers only)
         const encAmount = await encryptUint64(
-          params.requestedAmount,
+          requestedAmountScaled,
           contractAddress,
           address
         );
+        onProgress?.('Encrypting loan term...');
         const encTerm = await encryptUint32(
           params.requestedTerm,
           contractAddress,
           address
         );
+        onProgress?.('Encrypting credit score...');
         const encCredit = await encryptUint32(
           params.creditScore,
           contractAddress,
           address
         );
+        onProgress?.('Encrypting monthly revenue...');
         const encRevenue = await encryptUint32(
-          params.monthlyRevenue,
+          monthlyRevenueScaled,
           contractAddress,
           address
         );
+        onProgress?.('Encrypting payment history...');
         const encHistory = await encryptUint16(
           params.paymentHistory,
           contractAddress,
           address
         );
+        onProgress?.('Encrypting past defaults...');
         const encDefaults = await encryptUint8(
           params.pastDefaults,
           contractAddress,
           address
         );
+        onProgress?.('Encrypting community score...');
         const encCommunity = await encryptUint8(
           params.communityScore,
           contractAddress,
@@ -154,6 +168,7 @@ export const useMicroloanContract = () => {
         );
 
         // Submit transaction
+        onProgress?.('Estimating gas & requesting wallet confirmation...');
         const tx = await contract.submitLoanApplication(
           toContractInput(encAmount.data),
           toProofBytes(encAmount.signature),
@@ -172,6 +187,7 @@ export const useMicroloanContract = () => {
           params.purpose
         );
 
+        onProgress?.('Transaction sent. Waiting for confirmations...');
         const receipt = await tx.wait();
         console.log('Loan application submitted:', receipt);
 
@@ -187,6 +203,7 @@ export const useMicroloanContract = () => {
         console.error('Error submitting loan application:', error);
         throw error;
       } finally {
+        onProgress?.('');
         setIsLoading(false);
       }
     },
@@ -212,8 +229,11 @@ export const useMicroloanContract = () => {
           chain.id as keyof typeof CIPHERED_MICROLOAN_BAZAAR_ADDRESS
         ];
 
+        // Scale ETH -> 1e4 integer
+        const ETH_SCALE = 10_000;
+        const amountScaled = Math.round(amount * ETH_SCALE);
         const encAmount = await encryptUint64(
-          amount,
+          amountScaled,
           contractAddress,
           address
         );
@@ -257,8 +277,11 @@ export const useMicroloanContract = () => {
           chain.id as keyof typeof CIPHERED_MICROLOAN_BAZAAR_ADDRESS
         ];
 
+        // Scale ETH -> 1e4 integer
+        const ETH_SCALE = 10_000;
+        const amountScaled = Math.round(amount * ETH_SCALE);
         const encAmount = await encryptUint64(
-          amount,
+          amountScaled,
           contractAddress,
           address
         );

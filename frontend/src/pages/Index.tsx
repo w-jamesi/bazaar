@@ -1,6 +1,6 @@
-import Header from '@/components/Header';
-import Hero from '@/components/Hero';
-import PrivacyFeature from '@/components/PrivacyFeature';
+import Header from '../components/Header';
+import Hero from '../components/Hero';
+import PrivacyFeature from '../components/PrivacyFeature';
 
 const Index = () => {
   return (

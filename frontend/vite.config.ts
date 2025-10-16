@@ -7,12 +7,20 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 49231,
+    strictPort: true,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  define: {
+    global: 'globalThis',
+    'process.env': {},
+  },
+  optimizeDeps: {
+    include: ['wagmi', 'viem', '@rainbow-me/rainbowkit'],
   },
 }));
