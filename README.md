@@ -88,40 +88,40 @@ graph TB
 
 ## 📈 **Development Roadmap**
 
-### **Phase 1: Foundation (Q4 2024 - Q1 2025)** ✅
-- [x] Core smart contract development
-- [x] FHE integration and testing
-- [x] Basic frontend interface
-- [x] Wallet connectivity
-- [x] Initial deployment on testnet
+### **Phase 1: Core Prototype (2025 Q4)** ✅ **Current Phase**
+- [x] Smart contract deployment on Sepolia testnet
+- [x] Basic loan application system
+- [x] Multi-lender funding mechanism
+- [x] Encrypted data processing with FHE
+- [x] Public demo platform (no real funds)
 
-### **Phase 2: Enhancement (Q2 2025)**
-- [ ] Advanced credit scoring algorithms
-- [ ] Multi-currency support
-- [ ] Mobile app development
-- [ ] Enhanced security audits
-- [ ] Performance optimization
+### **Phase 2: FHE Credit Scoring MVP (2026 H1)**
+- [ ] On-chain FHE credit scoring model
+- [ ] Privacy-preserving risk assessment
+- [ ] Automated loan approval system
+- [ ] Dynamic interest rate calculation
+- [ ] Gateway-assisted decryption for risk tiers
 
-### **Phase 3: Expansion (Q3 2025)**
+### **Phase 3: Advanced Features (2026 H2)**
+- [ ] Mobile application development
 - [ ] Cross-chain compatibility
 - [ ] Advanced analytics dashboard
-- [ ] Automated risk management
 - [ ] Integration with traditional finance
-- [ ] Regulatory compliance tools
+- [ ] Enhanced user experience
 
-### **Phase 4: Scale (Q4 2025)**
+### **Phase 4: Production Launch (2027)**
 - [ ] Mainnet deployment
+- [ ] Security audit completion
+- [ ] Regulatory compliance
+- [ ] Community governance (DAO)
 - [ ] Global market expansion
-- [ ] Advanced FHE features
-- [ ] Institutional partnerships
-- [ ] Community governance
 
-### **Future Vision (2026-2027)**
+### **Future Vision (2027+)**
 - [ ] **AI-Powered Risk Assessment**: Machine learning models trained on encrypted data
 - [ ] **Cross-Border Compliance**: Automated regulatory compliance across jurisdictions
 - [ ] **Institutional Integration**: Bridge between DeFi and traditional finance
-- [ ] **Community Governance**: Decentralized autonomous organization (DAO) structure
 - [ ] **Advanced Privacy Features**: Zero-knowledge proofs for enhanced privacy
+- [ ] **Global Financial Inclusion**: Serving unbanked populations worldwide
 
 ## 🛠️ **Quick Start**
 
