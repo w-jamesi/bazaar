@@ -16,9 +16,41 @@ const About = () => {
               About Ciphered Microloan Bazaar
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              A decentralized microloan platform powered by Fully Homomorphic Encryption (FHE) 
+              A decentralized microloan platform powered by Fully Homomorphic Encryption (FHE)
               technology, enabling privacy-preserving financial services for underserved communities.
             </p>
+          </div>
+
+          {/* Demo Video Section */}
+          <div className="mb-16">
+            <Card className="p-8">
+              <div className="text-center mb-6">
+                <h2 className="text-3xl font-bold mb-3">Platform Demo</h2>
+                <p className="text-muted-foreground">
+                  Watch how our FHE-powered microloan platform enables complete privacy for borrowers
+                </p>
+              </div>
+              <div className="relative max-w-4xl mx-auto rounded-lg overflow-hidden shadow-2xl">
+                <video
+                  className="w-full h-auto"
+                  controls
+                  poster="/video-thumbnail.jpg"
+                  ref={(video) => {
+                    if (video) {
+                      video.playbackRate = 1.5;
+                    }
+                  }}
+                >
+                  <source src="/video.mp4" type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+              <div className="mt-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Experience end-to-end encrypted loan applications with zero-knowledge credit evaluation
+                </p>
+              </div>
+            </Card>
           </div>
 
           {/* Prototype Disclaimer */}
