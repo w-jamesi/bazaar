@@ -61,22 +61,45 @@ export const useMicroloanContract = () => {
   // Initialize FHEVM and contract
   useEffect(() => {
     const initialize = async () => {
-      if (!walletClient || !chain || !address) return;
+      console.log('[Contract Init] Starting initialization...', {
+        hasWalletClient: !!walletClient,
+        chain: chain?.id,
+        address,
+      });
+
+      if (!walletClient || !chain || !address) {
+        console.warn('[Contract Init] Missing required dependencies:', {
+          walletClient: !!walletClient,
+          chain: !!chain,
+          address: !!address,
+        });
+        return;
+      }
 
       try {
         // Get provider from wallet client
+        console.log('[Contract Init] Creating provider...');
         const provider = new BrowserProvider(walletClient as any);
 
         // Initialize FHEVM (no longer needs provider and chainId)
+        console.log('[Contract Init] Initializing FHEVM...');
         await initializeFHEVM();
+        console.log('[Contract Init] FHEVM initialized successfully');
 
-        // Get contract address - hardcoded for Sepolia
-        const contractAddress = CIPHERED_MICROLOAN_BAZAAR_ADDRESS[11155111]; // Sepolia chain ID
+        // Get contract address - use chain.id to support network switching
+        const contractAddress = CIPHERED_MICROLOAN_BAZAAR_ADDRESS[
+          chain.id as keyof typeof CIPHERED_MICROLOAN_BAZAAR_ADDRESS
+        ];
 
         if (!contractAddress) {
-          console.warn(`Contract not deployed on chain ${chain.id}`);
+          console.error(`[Contract Init] Contract not deployed on chain ${chain.id}`);
+          console.error('[Contract Init] Available chains:', Object.keys(CIPHERED_MICROLOAN_BAZAAR_ADDRESS));
+          setIsInitialized(false);
+          setContract(null);
           return;
         }
+
+        console.log('[Contract Init] Creating contract instance...', { contractAddress });
 
         // Create contract instance
         const signer = await provider.getSigner();
@@ -88,9 +111,11 @@ export const useMicroloanContract = () => {
 
         setContract(contractInstance);
         setIsInitialized(true);
-        console.log('Microloan contract initialized');
+        console.log('[Contract Init] ✅ Microloan contract initialized successfully');
       } catch (error) {
-        console.error('Failed to initialize contract:', error);
+        console.error('[Contract Init] ❌ Failed to initialize contract:', error);
+        setIsInitialized(false);
+        setContract(null);
       }
     };
 
@@ -102,15 +127,31 @@ export const useMicroloanContract = () => {
    */
   const submitLoanApplication = useCallback(
     async (params: LoanApplicationParams, onProgress?: (message: string) => void) => {
-      if (!contract || !isInitialized || !address || !chain) {
-        throw new Error('Contract not initialized');
+      console.log('[Submit Loan] Checking initialization...', {
+        hasContract: !!contract,
+        isInitialized,
+        hasAddress: !!address,
+        hasChain: !!chain,
+      });
+
+      if (!contract || !isInitialized) {
+        throw new Error('Contract not initialized. Please ensure your wallet is connected to Sepolia network.');
+      }
+
+      if (!address || !chain) {
+        throw new Error('Wallet not connected. Please connect your wallet first.');
       }
 
       setIsLoading(true);
       try {
         onProgress?.('Initializing FHE runtime...');
+        console.log('[Submit Loan] Checking FHE initialization...');
         if (!isFheInitialized()) {
-          throw new Error('FHE not initialized');
+          console.error('[Submit Loan] FHE not initialized, attempting to initialize...');
+          await initializeFHEVM();
+          if (!isFheInitialized()) {
+            throw new Error('FHE initialization failed. Please refresh the page and try again.');
+          }
         }
 
         const contractAddress = CIPHERED_MICROLOAN_BAZAAR_ADDRESS[
@@ -124,12 +165,7 @@ export const useMicroloanContract = () => {
         const requestedAmountScaled = Math.round(params.requestedAmount * ETH_SCALE);
         const monthlyRevenueScaled = Math.round(params.monthlyRevenue * ETH_SCALE);
 
-        // Encrypt all sensitive data (integers only)
-        const encAmount = await encryptUint64(
-          requestedAmountScaled,
-          contractAddress,
-          address
-        );
+        // Encrypt all parameters
         onProgress?.('Encrypting loan term...');
         const encTerm = await encryptUint32(
           params.requestedTerm,
@@ -167,8 +203,15 @@ export const useMicroloanContract = () => {
           address
         );
 
-        // Submit transaction
-        onProgress?.('Estimating gas & requesting wallet confirmation...');
+        // Encrypt amount last
+        const encAmount = await encryptUint64(
+          requestedAmountScaled,
+          contractAddress,
+          address
+        );
+
+        // Submit transaction with encrypted data
+        onProgress?.('Requesting wallet confirmation...');
         const tx = await contract.submitLoanApplication(
           toContractInput(encAmount.data),
           toProofBytes(encAmount.signature),

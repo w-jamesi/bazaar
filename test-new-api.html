@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test New FHE API</title></head>
+<body>
+<script type="module">
+import { initSDK, createInstance, SepoliaConfig } from 'https://cdn.zama.ai/relayer-sdk-js/0.2.0/relayer-sdk-js.js';
+
+async function test() {
+  try {
+    console.log('1. Initializing SDK...');
+    await initSDK();
+    
+    console.log('2. Creating instance...');
+    const instance = await createInstance(SepoliaConfig);
+    
+    console.log('3. Testing encryption...');
+    const encrypted = await instance.encrypt64(12345);
+    console.log('Encrypted result:', encrypted);
+    console.log('Encrypted data type:', typeof encrypted);
+    console.log('Encrypted keys:', Object.keys(encrypted));
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+test();
+</script>
+</body>
+</html>

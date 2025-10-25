@@ -214,17 +214,19 @@ export const requestDecryption = async (
 
 /**
  * Helper to convert encrypted data to contract input format
+ * The new SDK returns handles as bytes, not bytes32
  */
 export const toContractInput = (encrypted: string): string => {
-  // ABI shows submitLoanApplication expects bytes32 handles.
-  // Ensure 32-byte hex by left-padding.
-  return zeroPadValue(encrypted, 32);
+  // Return the encrypted handle as-is (it's already a proper hex string)
+  console.log('[FHE] toContractInput:', encrypted.substring(0, 20) + '...');
+  return encrypted;
 };
 
 /**
  * Helper to generate proof bytes for contract
  */
 export const toProofBytes = (signature: string): string => {
+  console.log('[FHE] toProofBytes length:', signature.length);
   return signature;
 };
 

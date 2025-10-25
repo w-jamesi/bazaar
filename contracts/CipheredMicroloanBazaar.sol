@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "fhevm/lib/TFHE.sol";
-import "fhevm/config/ZamaFHEVMConfig.sol";
-import "fhevm/gateway/GatewayCaller.sol";
+import "@fhevm/solidity/lib/FHE.sol";
+import {SepoliaConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 
 /**
  * @title CipheredMicroloanBazaar
@@ -17,7 +16,7 @@ import "fhevm/gateway/GatewayCaller.sol";
  *      - 4 roles: owner, creditAnalyst, loanOfficer, collectionAgent
  *      - Gateway decryption: creditScore, riskTier, approvedAmount, interestRate
  */
-contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
+contract CipheredMicroloanBazaar is SepoliaConfig {
 
     // ========== Enums ==========
 
@@ -116,6 +115,8 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         uint8 decryptedRiskTier;
         uint64 decryptedApprovedAmount;
         uint32 decryptedInterestRate;
+        uint32 decryptedApprovedTerm;
+        uint64 decryptedTotalRepayment;
         bool isDecrypted;
     }
 
@@ -124,6 +125,7 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         address[] lenders;
         mapping(address => euint64) contributionsCipher;    // Encrypted contributions
         mapping(address => uint64) decryptedContributions;  // Decrypted for distribution
+        mapping(address => bool) lenderContributed;         // Track if lender has contributed
         euint64 totalPooledCipher;                          // Total pooled amount
         uint64 totalPooledDecrypted;
         euint64 totalInterestCipher;                        // Total interest collected
@@ -145,6 +147,9 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         euint64 remainingBalanceCipher;         // Remaining balance
         uint256 nextPaymentDue;                 // Next payment timestamp
         uint256 lastPaymentAt;
+        // Decrypted tracking
+        uint32 installmentCountDecrypted;
+        uint32 installmentsPaidDecrypted;
         bool isComplete;
         bool isDefaulted;
     }
@@ -212,8 +217,6 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
     mapping(uint256 => PaymentRecord[]) public paymentHistory;
     mapping(address => BorrowerProfile) public borrowers;
     mapping(address => LenderProfile) public lenders;
-    mapping(uint256 => uint256) private gatewayRequestToLoan;
-    mapping(uint256 => address) private gatewayRequestToAddress;
 
     MarketplacePolicy public policy;
     uint256 public loanCount;
@@ -319,13 +322,13 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         });
 
         // Initialize aggregate statistics
-        totalVolumeProcessedCipher = TFHE.asEuint128(0);
-        totalInterestCollectedCipher = TFHE.asEuint128(0);
-        totalActiveBalanceCipher = TFHE.asEuint64(0);
+        totalVolumeProcessedCipher = FHE.asEuint128(0);
+        totalInterestCollectedCipher = FHE.asEuint128(0);
+        totalActiveBalanceCipher = FHE.asEuint64(0);
 
-        TFHE.allowThis(totalVolumeProcessedCipher);
-        TFHE.allowThis(totalInterestCollectedCipher);
-        TFHE.allowThis(totalActiveBalanceCipher);
+        FHE.allowThis(totalVolumeProcessedCipher);
+        FHE.allowThis(totalInterestCollectedCipher);
+        FHE.allowThis(totalActiveBalanceCipher);
     }
 
     // ========== Role Management ==========
@@ -362,52 +365,75 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
 
     // ========== Core Functions ==========
 
+
     /**
      * @notice Submit loan application with encrypted credentials
+     * @dev Accepts encrypted inputs from frontend using Zama SDK for end-to-end privacy
      */
     function submitLoanApplication(
-        bytes calldata encryptedAmount,
+        externalEuint64 encryptedAmount,
         bytes calldata amountProof,
-        bytes calldata encryptedTerm,
+        externalEuint32 encryptedTerm,
         bytes calldata termProof,
-        bytes calldata encryptedCredit,
+        externalEuint32 encryptedCredit,
         bytes calldata creditProof,
-        bytes calldata encryptedRevenue,
+        externalEuint32 encryptedRevenue,
         bytes calldata revenueProof,
-        bytes calldata encryptedHistory,
+        externalEuint16 encryptedHistory,
         bytes calldata historyProof,
-        bytes calldata encryptedDefaults,
+        externalEuint8 encryptedDefaults,
         bytes calldata defaultsProof,
-        bytes calldata encryptedCommunity,
+        externalEuint8 encryptedCommunity,
         bytes calldata communityProof,
         LoanPurpose purpose
     ) external returns (uint256) {
-        // Convert external inputs with proofs
-        euint64 requestedAmount = TFHE.asEuint64(abi.decode(encryptedAmount, (uint256)));
-        euint32 requestedTerm = TFHE.asEuint32(abi.decode(encryptedTerm, (uint256)));
-        euint32 creditScore = TFHE.asEuint32(abi.decode(encryptedCredit, (uint256)));
-        euint32 revenue = TFHE.asEuint32(abi.decode(encryptedRevenue, (uint256)));
-        euint16 history = TFHE.asEuint16(abi.decode(encryptedHistory, (uint256)));
-        euint8 defaults = TFHE.asEuint8(abi.decode(encryptedDefaults, (uint256)));
-        euint8 community = TFHE.asEuint8(abi.decode(encryptedCommunity, (uint256)));
+        // Convert external encrypted inputs to internal encrypted types with verification
+        euint64 requestedAmount = FHE.fromExternal(encryptedAmount, amountProof);
+        euint32 requestedTerm = FHE.fromExternal(encryptedTerm, termProof);
+        euint32 creditScore = FHE.fromExternal(encryptedCredit, creditProof);
+        euint32 revenue = FHE.fromExternal(encryptedRevenue, revenueProof);
+        euint16 history = FHE.fromExternal(encryptedHistory, historyProof);
+        euint8 defaults = FHE.fromExternal(encryptedDefaults, defaultsProof);
+        euint8 community = FHE.fromExternal(encryptedCommunity, communityProof);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         // Allow contract access
-        TFHE.allowThis(requestedAmount);
-        TFHE.allowThis(requestedTerm);
-        TFHE.allowThis(creditScore);
-        TFHE.allowThis(revenue);
-        TFHE.allowThis(history);
-        TFHE.allowThis(defaults);
-        TFHE.allowThis(community);
+        FHE.allowThis(requestedAmount);
+        FHE.allowThis(requestedTerm);
+        FHE.allowThis(creditScore);
+        FHE.allowThis(revenue);
+        FHE.allowThis(history);
+        FHE.allowThis(defaults);
+        FHE.allowThis(community);
 
         // Allow borrower access
-        TFHE.allow(requestedAmount, msg.sender);
-        TFHE.allow(requestedTerm, msg.sender);
-        TFHE.allow(creditScore, msg.sender);
-        TFHE.allow(revenue, msg.sender);
-        TFHE.allow(history, msg.sender);
-        TFHE.allow(defaults, msg.sender);
-        TFHE.allow(community, msg.sender);
+        FHE.allow(requestedAmount, msg.sender);
+        FHE.allow(requestedTerm, msg.sender);
+        FHE.allow(creditScore, msg.sender);
+        FHE.allow(revenue, msg.sender);
+        FHE.allow(history, msg.sender);
+        FHE.allow(defaults, msg.sender);
+        FHE.allow(community, msg.sender);
 
         uint256 loanId = loanCount++;
 
@@ -433,29 +459,29 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         if (profile.firstLoanAt == 0) {
             profile.borrower = msg.sender;
             profile.firstLoanAt = block.timestamp;
-            profile.totalLoansCipher = TFHE.asEuint32(0);
-            profile.activeLoansCipher = TFHE.asEuint32(0);
-            profile.completedLoansCipher = TFHE.asEuint32(0);
-            profile.defaultedLoansCipher = TFHE.asEuint32(0);
-            profile.totalBorrowedCipher = TFHE.asEuint64(0);
-            profile.totalRepaidCipher = TFHE.asEuint64(0);
-            profile.outstandingBalanceCipher = TFHE.asEuint64(0);
-            profile.averageCreditScoreCipher = TFHE.asEuint16(0);
-            profile.reputationScoreCipher = TFHE.asEuint8(50); // Start at 50/100
+            profile.totalLoansCipher = FHE.asEuint32(0);
+            profile.activeLoansCipher = FHE.asEuint32(0);
+            profile.completedLoansCipher = FHE.asEuint32(0);
+            profile.defaultedLoansCipher = FHE.asEuint32(0);
+            profile.totalBorrowedCipher = FHE.asEuint64(0);
+            profile.totalRepaidCipher = FHE.asEuint64(0);
+            profile.outstandingBalanceCipher = FHE.asEuint64(0);
+            profile.averageCreditScoreCipher = FHE.asEuint16(0);
+            profile.reputationScoreCipher = FHE.asEuint8(50); // Start at 50/100
 
-            TFHE.allowThis(profile.totalLoansCipher);
-            TFHE.allowThis(profile.activeLoansCipher);
-            TFHE.allowThis(profile.completedLoansCipher);
-            TFHE.allowThis(profile.defaultedLoansCipher);
-            TFHE.allowThis(profile.totalBorrowedCipher);
-            TFHE.allowThis(profile.totalRepaidCipher);
-            TFHE.allowThis(profile.outstandingBalanceCipher);
-            TFHE.allowThis(profile.averageCreditScoreCipher);
-            TFHE.allowThis(profile.reputationScoreCipher);
+            FHE.allowThis(profile.totalLoansCipher);
+            FHE.allowThis(profile.activeLoansCipher);
+            FHE.allowThis(profile.completedLoansCipher);
+            FHE.allowThis(profile.defaultedLoansCipher);
+            FHE.allowThis(profile.totalBorrowedCipher);
+            FHE.allowThis(profile.totalRepaidCipher);
+            FHE.allowThis(profile.outstandingBalanceCipher);
+            FHE.allowThis(profile.averageCreditScoreCipher);
+            FHE.allowThis(profile.reputationScoreCipher);
         }
 
         profile.loanIds.push(loanId);
-        profile.totalLoansCipher = TFHE.add(profile.totalLoansCipher, TFHE.asEuint32(1));
+        profile.totalLoansCipher = FHE.add(profile.totalLoansCipher, FHE.asEuint32(1));
         profile.lastLoanAt = block.timestamp;
         profile.loanCount++;
 
@@ -483,76 +509,76 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         MarketplacePolicy memory pol = policy;
 
         // Calculate adjusted credit score with community bonus
-        ebool highCommunity = TFHE.ge(loan.communityScoreCipher, TFHE.asEuint8(7));
-        euint32 communityBonus = TFHE.select(highCommunity, TFHE.asEuint32(50), TFHE.asEuint32(0));
-        euint32 adjustedCredit = TFHE.add(loan.creditScoreCipher, communityBonus);
+        ebool highCommunity = FHE.ge(loan.communityScoreCipher, FHE.asEuint8(7));
+        euint32 communityBonus = FHE.select(highCommunity, FHE.asEuint32(50), FHE.asEuint32(0));
+        euint32 adjustedCredit = FHE.add(loan.creditScoreCipher, communityBonus);
 
         // Apply payment history bonus
-        ebool goodHistory = TFHE.ge(loan.paymentHistoryCipher, TFHE.asEuint16(10));
-        euint32 historyBonus = TFHE.select(goodHistory, TFHE.asEuint32(30), TFHE.asEuint32(0));
-        adjustedCredit = TFHE.add(adjustedCredit, historyBonus);
+        ebool goodHistory = FHE.ge(loan.paymentHistoryCipher, FHE.asEuint16(10));
+        euint32 historyBonus = FHE.select(goodHistory, FHE.asEuint32(30), FHE.asEuint32(0));
+        adjustedCredit = FHE.add(adjustedCredit, historyBonus);
 
         // Apply default penalty
-        euint32 defaultPenalty = TFHE.mul(TFHE.asEuint32(loan.pastDefaultsCipher), uint32(100));
-        ebool canSubtract = TFHE.gt(adjustedCredit, defaultPenalty);
-        adjustedCredit = TFHE.select(canSubtract, TFHE.sub(adjustedCredit, defaultPenalty), TFHE.asEuint32(300));
+        euint32 defaultPenalty = FHE.mul(FHE.asEuint32(loan.pastDefaultsCipher), uint32(100));
+        ebool canSubtract = FHE.gt(adjustedCredit, defaultPenalty);
+        adjustedCredit = FHE.select(canSubtract, FHE.sub(adjustedCredit, defaultPenalty), FHE.asEuint32(300));
 
         // Calculate risk tier (0=Minimal, 5=Rejected)
-        ebool creditExcellent = TFHE.ge(adjustedCredit, TFHE.asEuint32(750));
-        ebool creditGood = TFHE.ge(adjustedCredit, TFHE.asEuint32(650));
-        ebool creditFair = TFHE.ge(adjustedCredit, TFHE.asEuint32(550));
-        ebool creditPoor = TFHE.ge(adjustedCredit, TFHE.asEuint32(450));
+        ebool creditExcellent = FHE.ge(adjustedCredit, FHE.asEuint32(750));
+        ebool creditGood = FHE.ge(adjustedCredit, FHE.asEuint32(650));
+        ebool creditFair = FHE.ge(adjustedCredit, FHE.asEuint32(550));
+        ebool creditPoor = FHE.ge(adjustedCredit, FHE.asEuint32(450));
 
-        euint8 riskTier = TFHE.select(creditExcellent, TFHE.asEuint8(0),  // Minimal
-            TFHE.select(creditGood, TFHE.asEuint8(1),                    // Low
-                TFHE.select(creditFair, TFHE.asEuint8(2),                // Moderate
-                    TFHE.select(creditPoor, TFHE.asEuint8(3),            // High
-                        TFHE.asEuint8(4)))));                           // VeryHigh (or Rejected)
+        euint8 riskTier = FHE.select(creditExcellent, FHE.asEuint8(0),  // Minimal
+            FHE.select(creditGood, FHE.asEuint8(1),                    // Low
+                FHE.select(creditFair, FHE.asEuint8(2),                // Moderate
+                    FHE.select(creditPoor, FHE.asEuint8(3),            // High
+                        FHE.asEuint8(4)))));                           // VeryHigh (or Rejected)
 
         // Calculate approved amount (% of requested based on risk)
         // Minimal: 100%, Low: 90%, Moderate: 75%, High: 50%, VeryHigh: 0%
-        euint8 approvalPercentage = TFHE.select(creditExcellent, TFHE.asEuint8(100),
-            TFHE.select(creditGood, TFHE.asEuint8(90),
-                TFHE.select(creditFair, TFHE.asEuint8(75),
-                    TFHE.select(creditPoor, TFHE.asEuint8(50),
-                        TFHE.asEuint8(0)))));
+        euint8 approvalPercentage = FHE.select(creditExcellent, FHE.asEuint8(100),
+            FHE.select(creditGood, FHE.asEuint8(90),
+                FHE.select(creditFair, FHE.asEuint8(75),
+                    FHE.select(creditPoor, FHE.asEuint8(50),
+                        FHE.asEuint8(0)))));
 
-        euint64 approvedAmount = TFHE.div(
-            TFHE.mul(loan.requestedAmountCipher, TFHE.asEuint64(approvalPercentage)),
+        euint64 approvedAmount = FHE.div(
+            FHE.mul(loan.requestedAmountCipher, FHE.asEuint64(approvalPercentage)),
             uint64(100)
         );
 
         // Cap at policy max
-        ebool exceedsMax = TFHE.gt(approvedAmount, TFHE.asEuint64(pol.maxLoanAmount));
-        approvedAmount = TFHE.select(exceedsMax, TFHE.asEuint64(pol.maxLoanAmount), approvedAmount);
+        ebool exceedsMax = FHE.gt(approvedAmount, FHE.asEuint64(pol.maxLoanAmount));
+        approvedAmount = FHE.select(exceedsMax, FHE.asEuint64(pol.maxLoanAmount), approvedAmount);
 
         // Calculate interest rate based on risk tier
         // Minimal: 8%, Low: 12%, Moderate: 18%, High: 24%, VeryHigh: 30%
-        euint32 baseRate = TFHE.select(creditExcellent, TFHE.asEuint32(800),
-            TFHE.select(creditGood, TFHE.asEuint32(1200),
-                TFHE.select(creditFair, TFHE.asEuint32(1800),
-                    TFHE.select(creditPoor, TFHE.asEuint32(2400),
-                        TFHE.asEuint32(3000)))));
+        euint32 baseRate = FHE.select(creditExcellent, FHE.asEuint32(800),
+            FHE.select(creditGood, FHE.asEuint32(1200),
+                FHE.select(creditFair, FHE.asEuint32(1800),
+                    FHE.select(creditPoor, FHE.asEuint32(2400),
+                        FHE.asEuint32(3000)))));
 
         // Add revenue-based adjustment
-        ebool highRevenue = TFHE.ge(loan.monthlyRevenueCipher, TFHE.asEuint32(50000));
-        euint32 revenueDiscount = TFHE.select(highRevenue, TFHE.asEuint32(200), TFHE.asEuint32(0));
-        euint32 interestRate = TFHE.sub(baseRate, revenueDiscount);
+        ebool highRevenue = FHE.ge(loan.monthlyRevenueCipher, FHE.asEuint32(50000));
+        euint32 revenueDiscount = FHE.select(highRevenue, FHE.asEuint32(200), FHE.asEuint32(0));
+        euint32 interestRate = FHE.sub(baseRate, revenueDiscount);
 
         // Cap interest rate
-        ebool rateTooHigh = TFHE.gt(interestRate, TFHE.asEuint32(pol.maxInterestRate));
-        interestRate = TFHE.select(rateTooHigh, TFHE.asEuint32(pol.maxInterestRate), interestRate);
+        ebool rateTooHigh = FHE.gt(interestRate, FHE.asEuint32(pol.maxInterestRate));
+        interestRate = FHE.select(rateTooHigh, FHE.asEuint32(pol.maxInterestRate), interestRate);
 
         // Calculate total repayment: principal + interest
         // Simple interest: principal * (1 + rate * term/365)
-        euint64 interestAmount = TFHE.div(
-            TFHE.mul(
-                TFHE.mul(approvedAmount, TFHE.asEuint64(interestRate)),
-                TFHE.asEuint64(loan.requestedTermCipher)
+        euint64 interestAmount = FHE.div(
+            FHE.mul(
+                FHE.mul(approvedAmount, FHE.asEuint64(interestRate)),
+                FHE.asEuint64(loan.requestedTermCipher)
             ),
             uint64(365 * 10000) // basis points conversion
         );
-        euint64 totalRepayment = TFHE.add(approvedAmount, interestAmount);
+        euint64 totalRepayment = FHE.add(approvedAmount, interestAmount);
 
         // Store evaluation
         CreditEvaluation storage eval = evaluations[loanId];
@@ -567,54 +593,47 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         eval.evaluatedBy = msg.sender;
         eval.isComplete = false;
 
-        TFHE.allowThis(adjustedCredit);
-        TFHE.allowThis(riskTier);
-        TFHE.allowThis(approvedAmount);
-        TFHE.allowThis(interestRate);
-        TFHE.allowThis(totalRepayment);
+        FHE.allowThis(adjustedCredit);
+        FHE.allowThis(riskTier);
+        FHE.allowThis(approvedAmount);
+        FHE.allowThis(interestRate);
+        FHE.allowThis(totalRepayment);
 
-        // Prepare for Gateway decryption
-        uint256[] memory cts = new uint256[](4);
-        cts[0] = Gateway.toUint256(adjustedCredit);
-        cts[1] = Gateway.toUint256(riskTier);
-        cts[2] = Gateway.toUint256(approvedAmount);
-        cts[3] = Gateway.toUint256(interestRate);
+        // Update loan status to RiskAssessment
+        loan.status = LoanStatus.RiskAssessment;
+        loan.lastStatusChangeAt = block.timestamp;
+        loan.statusChangeCount++;
+        emit LoanStatusChanged(loanId, oldStatus, LoanStatus.RiskAssessment, block.timestamp);
 
-        uint256 requestId = Gateway.requestDecryption(
-            cts,
-            this.creditEvaluationCallback.selector,
-            0,
-            block.timestamp + 1 hours,
-            false
-        );
+        emit CreditEvaluationRequested(loanId, 0, msg.sender);
 
-        gatewayRequestToLoan[requestId] = loanId;
-
-        emit CreditEvaluationRequested(loanId, requestId, msg.sender);
-
-        return requestId;
+        return loanId;
     }
 
     /**
-     * @notice Gateway callback for credit evaluation decryption
+     * @notice Complete credit evaluation (called by authorized analyst)
      */
-    function creditEvaluationCallback(
-        uint256 requestId,
-        uint256[] calldata decryptedValues
-    ) external onlyGateway {
-        uint256 loanId = gatewayRequestToLoan[requestId];
+    function completeCreditEvaluation(
+        uint256 loanId,
+        uint32 creditScore,
+        uint8 riskTier,
+        uint64 approvedAmount,
+        uint32 interestRate,
+        uint32 approvedTerm,
+        uint64 totalRepayment
+    ) external onlyCreditAnalyst {
         LoanApplication storage loan = loans[loanId];
-        CreditEvaluation storage eval = evaluations[loanId];
+        require(loan.isActive, "Loan not active");
+        require(loan.status == LoanStatus.RiskAssessment, "Invalid status");
 
-        uint32 creditScore = uint32(decryptedValues[0]);
-        uint8 riskTier = uint8(decryptedValues[1]);
-        uint64 approvedAmount = uint64(decryptedValues[2]);
-        uint32 interestRate = uint32(decryptedValues[3]);
+        CreditEvaluation storage eval = evaluations[loanId];
 
         eval.decryptedCreditScore = creditScore;
         eval.decryptedRiskTier = riskTier;
         eval.decryptedApprovedAmount = approvedAmount;
         eval.decryptedInterestRate = interestRate;
+        eval.decryptedApprovedTerm = approvedTerm;
+        eval.decryptedTotalRepayment = totalRepayment;
         eval.isDecrypted = true;
         eval.isComplete = true;
 
@@ -641,72 +660,77 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
      */
     function fundLoan(
         uint256 loanId,
-        bytes calldata encryptedAmount,
-        bytes calldata proof
+        externalEuint64 encryptedAmount,
+        bytes calldata amountProof
     ) external payable {
         LoanApplication storage loan = loans[loanId];
         require(loan.status == LoanStatus.Approved, "Loan not approved");
         require(loan.isActive, "Loan not active");
+        // Note: Amount verification should be done off-chain or via separate decryption
 
         CreditEvaluation storage eval = evaluations[loanId];
         require(eval.isDecrypted, "Evaluation not ready");
 
-        euint64 contribution = TFHE.asEuint64(abi.decode(encryptedAmount, (uint256)));
-        TFHE.allowThis(contribution);
+        euint64 contribution = FHE.fromExternal(encryptedAmount, amountProof);
+        FHE.allowThis(contribution);
+        FHE.allow(contribution, msg.sender);
 
         LoanPool storage pool = pools[loanId];
 
         // Initialize pool if first contribution
         if (pool.lenderCount == 0) {
             pool.loanId = loanId;
-            pool.totalPooledCipher = TFHE.asEuint64(0);
-            pool.totalInterestCipher = TFHE.asEuint64(0);
-            TFHE.allowThis(pool.totalPooledCipher);
-            TFHE.allowThis(pool.totalInterestCipher);
+            pool.totalPooledCipher = FHE.asEuint64(0);
+            pool.totalInterestCipher = FHE.asEuint64(0);
+            FHE.allowThis(pool.totalPooledCipher);
+            FHE.allowThis(pool.totalInterestCipher);
         }
 
         // Track lender contribution
-        if (Gateway.toUint256(pool.contributionsCipher[msg.sender]) == 0) {
+        bool isNewLender = pool.lenderContributed[msg.sender] == false;
+        if (isNewLender) {
             pool.lenders.push(msg.sender);
-            pool.contributionsCipher[msg.sender] = TFHE.asEuint64(0);
-            TFHE.allowThis(pool.contributionsCipher[msg.sender]);
+            pool.contributionsCipher[msg.sender] = FHE.asEuint64(0);
+            FHE.allowThis(pool.contributionsCipher[msg.sender]);
             pool.lenderCount++;
+            pool.lenderContributed[msg.sender] = true;
         }
 
-        pool.contributionsCipher[msg.sender] = TFHE.add(pool.contributionsCipher[msg.sender], contribution);
-        pool.totalPooledCipher = TFHE.add(pool.totalPooledCipher, contribution);
+        pool.contributionsCipher[msg.sender] = FHE.add(pool.contributionsCipher[msg.sender], contribution);
+        pool.totalPooledCipher = FHE.add(pool.totalPooledCipher, contribution);
+        // totalPooledDecrypted will be updated via completeCreditEvaluation or separate function
+        // Contribution tracking will be done via decryption oracle
 
         // Update lender profile
         LenderProfile storage lenderProfile = lenders[msg.sender];
         if (lenderProfile.firstFundedAt == 0) {
             lenderProfile.lender = msg.sender;
             lenderProfile.firstFundedAt = block.timestamp;
-            lenderProfile.totalFundedCipher = TFHE.asEuint64(0);
-            lenderProfile.totalInterestEarnedCipher = TFHE.asEuint64(0);
-            lenderProfile.currentExposureCipher = TFHE.asEuint64(0);
-            lenderProfile.activeLoanCountCipher = TFHE.asEuint32(0);
-            lenderProfile.completedLoanCountCipher = TFHE.asEuint32(0);
-            lenderProfile.avgReturnRateCipher = TFHE.asEuint16(0);
+            lenderProfile.totalFundedCipher = FHE.asEuint64(0);
+            lenderProfile.totalInterestEarnedCipher = FHE.asEuint64(0);
+            lenderProfile.currentExposureCipher = FHE.asEuint64(0);
+            lenderProfile.activeLoanCountCipher = FHE.asEuint32(0);
+            lenderProfile.completedLoanCountCipher = FHE.asEuint32(0);
+            lenderProfile.avgReturnRateCipher = FHE.asEuint16(0);
 
-            TFHE.allowThis(lenderProfile.totalFundedCipher);
-            TFHE.allowThis(lenderProfile.totalInterestEarnedCipher);
-            TFHE.allowThis(lenderProfile.currentExposureCipher);
-            TFHE.allowThis(lenderProfile.activeLoanCountCipher);
-            TFHE.allowThis(lenderProfile.completedLoanCountCipher);
-            TFHE.allowThis(lenderProfile.avgReturnRateCipher);
+            FHE.allowThis(lenderProfile.totalFundedCipher);
+            FHE.allowThis(lenderProfile.totalInterestEarnedCipher);
+            FHE.allowThis(lenderProfile.currentExposureCipher);
+            FHE.allowThis(lenderProfile.activeLoanCountCipher);
+            FHE.allowThis(lenderProfile.completedLoanCountCipher);
+            FHE.allowThis(lenderProfile.avgReturnRateCipher);
         }
 
-        lenderProfile.totalFundedCipher = TFHE.add(lenderProfile.totalFundedCipher, contribution);
-        lenderProfile.currentExposureCipher = TFHE.add(lenderProfile.currentExposureCipher, contribution);
+        lenderProfile.totalFundedCipher = FHE.add(lenderProfile.totalFundedCipher, contribution);
+        lenderProfile.currentExposureCipher = FHE.add(lenderProfile.currentExposureCipher, contribution);
         lenderProfile.fundedLoanIds.push(loanId);
         lenderProfile.lastFundedAt = block.timestamp;
         lenderProfile.fundedCount++;
 
-        // Check if fully funded
-        ebool fullyFunded = TFHE.ge(pool.totalPooledCipher, eval.approvedAmountCipher);
-        if (Gateway.toUint256(fullyFunded) == 1) {
+        // Check if fully funded (use decrypted amount for comparison)
+        // The analyst has already decrypted the approved amount
+        if (pool.totalPooledDecrypted >= eval.decryptedApprovedAmount) {
             pool.isFunded = true;
-            pool.totalPooledDecrypted = eval.decryptedApprovedAmount;
         }
 
         emit LoanFunded(loanId, msg.sender, block.timestamp);
@@ -736,41 +760,42 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         schedule.loanId = loanId;
 
         // Calculate installments (monthly payments)
-        uint32 termDays = eval.decryptedCreditScore > 0 ?
-            uint32(Gateway.toUint256(eval.approvedTermCipher)) : 180;
+        uint32 termDays = eval.decryptedApprovedTerm > 0 ? eval.decryptedApprovedTerm : 180;
         uint32 installmentCount = (termDays + 29) / 30; // Round up to months
 
-        schedule.installmentCountCipher = TFHE.asEuint32(installmentCount);
-        schedule.installmentAmountCipher = TFHE.div(eval.totalRepaymentCipher, uint64(installmentCount));
-        schedule.totalPaidCipher = TFHE.asEuint64(0);
-        schedule.installmentsPaidCipher = TFHE.asEuint32(0);
-        schedule.missedPaymentsCipher = TFHE.asEuint32(0);
+        schedule.installmentCountCipher = FHE.asEuint32(installmentCount);
+        schedule.installmentAmountCipher = FHE.div(eval.totalRepaymentCipher, uint64(installmentCount));
+        schedule.totalPaidCipher = FHE.asEuint64(0);
+        schedule.installmentsPaidCipher = FHE.asEuint32(0);
+        schedule.missedPaymentsCipher = FHE.asEuint32(0);
         schedule.remainingBalanceCipher = eval.totalRepaymentCipher;
         schedule.nextPaymentDue = block.timestamp + 30 days;
+        schedule.installmentCountDecrypted = installmentCount;
+        schedule.installmentsPaidDecrypted = 0;
 
-        TFHE.allowThis(schedule.installmentCountCipher);
-        TFHE.allowThis(schedule.installmentAmountCipher);
-        TFHE.allowThis(schedule.totalPaidCipher);
-        TFHE.allowThis(schedule.installmentsPaidCipher);
-        TFHE.allowThis(schedule.missedPaymentsCipher);
-        TFHE.allowThis(schedule.remainingBalanceCipher);
+        FHE.allowThis(schedule.installmentCountCipher);
+        FHE.allowThis(schedule.installmentAmountCipher);
+        FHE.allowThis(schedule.totalPaidCipher);
+        FHE.allowThis(schedule.installmentsPaidCipher);
+        FHE.allowThis(schedule.missedPaymentsCipher);
+        FHE.allowThis(schedule.remainingBalanceCipher);
 
         // Update borrower profile
         BorrowerProfile storage profile = borrowers[loan.borrower];
-        profile.activeLoansCipher = TFHE.add(profile.activeLoansCipher, TFHE.asEuint32(1));
-        profile.totalBorrowedCipher = TFHE.add(profile.totalBorrowedCipher, eval.approvedAmountCipher);
-        profile.outstandingBalanceCipher = TFHE.add(profile.outstandingBalanceCipher, eval.totalRepaymentCipher);
+        profile.activeLoansCipher = FHE.add(profile.activeLoansCipher, FHE.asEuint32(1));
+        profile.totalBorrowedCipher = FHE.add(profile.totalBorrowedCipher, eval.approvedAmountCipher);
+        profile.outstandingBalanceCipher = FHE.add(profile.outstandingBalanceCipher, eval.totalRepaymentCipher);
 
         // Update aggregate statistics
         totalLoansIssued++;
-        totalVolumeProcessedCipher = TFHE.add(totalVolumeProcessedCipher, TFHE.asEuint128(eval.approvedAmountCipher));
-        totalActiveBalanceCipher = TFHE.add(totalActiveBalanceCipher, eval.totalRepaymentCipher);
+        totalVolumeProcessedCipher = FHE.add(totalVolumeProcessedCipher, FHE.asEuint128(eval.approvedAmountCipher));
+        totalActiveBalanceCipher = FHE.add(totalActiveBalanceCipher, eval.totalRepaymentCipher);
 
         // Update lender profiles
         for (uint i = 0; i < pool.lenders.length; i++) {
             address lender = pool.lenders[i];
             LenderProfile storage lenderProfile = lenders[lender];
-            lenderProfile.activeLoanCountCipher = TFHE.add(lenderProfile.activeLoanCountCipher, TFHE.asEuint32(1));
+            lenderProfile.activeLoanCountCipher = FHE.add(lenderProfile.activeLoanCountCipher, FHE.asEuint32(1));
         }
 
         emit LoanDisbursed(loanId, block.timestamp);
@@ -789,8 +814,8 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
      */
     function makePayment(
         uint256 loanId,
-        bytes calldata encryptedAmount,
-        bytes calldata proof
+        externalEuint64 encryptedAmount,
+        bytes calldata amountProof
     ) external {
         LoanApplication storage loan = loans[loanId];
         require(loan.borrower == msg.sender, "Not borrower");
@@ -799,29 +824,29 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         RepaymentSchedule storage schedule = schedules[loanId];
         require(!schedule.isDefaulted, "Loan defaulted");
 
-        euint64 paymentAmount = TFHE.asEuint64(abi.decode(encryptedAmount, (uint256)));
-        TFHE.allowThis(paymentAmount);
+        euint64 paymentAmount = FHE.fromExternal(encryptedAmount, amountProof);
+        FHE.allowThis(paymentAmount);
 
         // Update schedule
-        schedule.totalPaidCipher = TFHE.add(schedule.totalPaidCipher, paymentAmount);
-        schedule.installmentsPaidCipher = TFHE.add(schedule.installmentsPaidCipher, TFHE.asEuint32(1));
+        schedule.totalPaidCipher = FHE.add(schedule.totalPaidCipher, paymentAmount);
+        schedule.installmentsPaidCipher = FHE.add(schedule.installmentsPaidCipher, FHE.asEuint32(1));
 
-        ebool canSubtract = TFHE.ge(schedule.remainingBalanceCipher, paymentAmount);
-        schedule.remainingBalanceCipher = TFHE.select(
+        ebool canSubtract = FHE.ge(schedule.remainingBalanceCipher, paymentAmount);
+        schedule.remainingBalanceCipher = FHE.select(
             canSubtract,
-            TFHE.sub(schedule.remainingBalanceCipher, paymentAmount),
-            TFHE.asEuint64(0)
+            FHE.sub(schedule.remainingBalanceCipher, paymentAmount),
+            FHE.asEuint64(0)
         );
 
         // Calculate principal and interest portions
         CreditEvaluation storage eval = evaluations[loanId];
-        euint64 totalInterest = TFHE.sub(eval.totalRepaymentCipher, eval.approvedAmountCipher);
-        uint32 totalInstallments = uint32(Gateway.toUint256(schedule.installmentCountCipher));
-        euint64 interestPerInstallment = TFHE.div(totalInterest, uint64(totalInstallments));
+        euint64 totalInterest = FHE.sub(eval.totalRepaymentCipher, eval.approvedAmountCipher);
+        uint32 totalInstallments = schedule.installmentCountDecrypted;
+        euint64 interestPerInstallment = FHE.div(totalInterest, uint64(totalInstallments));
 
-        ebool isInterestPayment = TFHE.le(paymentAmount, TFHE.mul(interestPerInstallment, uint64(2)));
-        euint64 interestPaid = TFHE.select(isInterestPayment, paymentAmount, interestPerInstallment);
-        euint64 principalPaid = TFHE.sub(paymentAmount, interestPaid);
+        ebool isInterestPayment = FHE.le(paymentAmount, FHE.mul(interestPerInstallment, uint64(2)));
+        euint64 interestPaid = FHE.select(isInterestPayment, paymentAmount, interestPerInstallment);
+        euint64 principalPaid = FHE.sub(paymentAmount, interestPaid);
 
         // Record payment
         bool isLate = block.timestamp > schedule.nextPaymentDue + (policy.latePaymentThreshold * 1 days);
@@ -854,23 +879,23 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
 
         // Distribute interest to pool
         LoanPool storage pool = pools[loanId];
-        pool.totalInterestCipher = TFHE.add(pool.totalInterestCipher, interestPaid);
+        pool.totalInterestCipher = FHE.add(pool.totalInterestCipher, interestPaid);
 
         // Update borrower profile
         BorrowerProfile storage profile = borrowers[loan.borrower];
-        profile.totalRepaidCipher = TFHE.add(profile.totalRepaidCipher, paymentAmount);
-        profile.outstandingBalanceCipher = TFHE.sub(profile.outstandingBalanceCipher, paymentAmount);
+        profile.totalRepaidCipher = FHE.add(profile.totalRepaidCipher, paymentAmount);
+        profile.outstandingBalanceCipher = FHE.sub(profile.outstandingBalanceCipher, paymentAmount);
 
         // Update aggregate statistics
-        totalInterestCollectedCipher = TFHE.add(totalInterestCollectedCipher, TFHE.asEuint128(interestPaid));
-        totalActiveBalanceCipher = TFHE.sub(totalActiveBalanceCipher, paymentAmount);
+        totalInterestCollectedCipher = FHE.add(totalInterestCollectedCipher, FHE.asEuint128(interestPaid));
+        totalActiveBalanceCipher = FHE.sub(totalActiveBalanceCipher, paymentAmount);
 
-        uint32 currentInstallment = uint32(Gateway.toUint256(schedule.installmentsPaidCipher));
+        schedule.installmentsPaidDecrypted++;
+        uint32 currentInstallment = schedule.installmentsPaidDecrypted;
         emit PaymentMade(loanId, msg.sender, currentInstallment, block.timestamp);
 
         // Check if loan completed
-        ebool isComplete = TFHE.eq(schedule.remainingBalanceCipher, TFHE.asEuint64(0));
-        if (Gateway.toUint256(isComplete) == 1) {
+        if (schedule.installmentsPaidDecrypted >= schedule.installmentCountDecrypted) {
             _completeLoan(loanId);
         }
     }
@@ -896,15 +921,15 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
 
         // Update borrower profile
         BorrowerProfile storage profile = borrowers[loan.borrower];
-        profile.defaultedLoansCipher = TFHE.add(profile.defaultedLoansCipher, TFHE.asEuint32(1));
-        profile.activeLoansCipher = TFHE.sub(profile.activeLoansCipher, TFHE.asEuint32(1));
+        profile.defaultedLoansCipher = FHE.add(profile.defaultedLoansCipher, FHE.asEuint32(1));
+        profile.activeLoansCipher = FHE.sub(profile.activeLoansCipher, FHE.asEuint32(1));
 
         // Penalty on reputation
-        ebool canDecrease = TFHE.gt(profile.reputationScoreCipher, TFHE.asEuint8(20));
-        profile.reputationScoreCipher = TFHE.select(
+        ebool canDecrease = FHE.gt(profile.reputationScoreCipher, FHE.asEuint8(20));
+        profile.reputationScoreCipher = FHE.select(
             canDecrease,
-            TFHE.sub(profile.reputationScoreCipher, TFHE.asEuint8(20)),
-            TFHE.asEuint8(0)
+            FHE.sub(profile.reputationScoreCipher, FHE.asEuint8(20)),
+            FHE.asEuint8(0)
         );
 
         // Update lender profiles
@@ -912,8 +937,8 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         for (uint i = 0; i < pool.lenders.length; i++) {
             address lender = pool.lenders[i];
             LenderProfile storage lenderProfile = lenders[lender];
-            lenderProfile.activeLoanCountCipher = TFHE.sub(lenderProfile.activeLoanCountCipher, TFHE.asEuint32(1));
-            lenderProfile.currentExposureCipher = TFHE.sub(lenderProfile.currentExposureCipher, pool.contributionsCipher[lender]);
+            lenderProfile.activeLoanCountCipher = FHE.sub(lenderProfile.activeLoanCountCipher, FHE.asEuint32(1));
+            lenderProfile.currentExposureCipher = FHE.sub(lenderProfile.currentExposureCipher, pool.contributionsCipher[lender]);
         }
 
         totalLoansDefaulted++;
@@ -939,15 +964,15 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
 
         // Update borrower profile
         BorrowerProfile storage profile = borrowers[loan.borrower];
-        profile.completedLoansCipher = TFHE.add(profile.completedLoansCipher, TFHE.asEuint32(1));
-        profile.activeLoansCipher = TFHE.sub(profile.activeLoansCipher, TFHE.asEuint32(1));
+        profile.completedLoansCipher = FHE.add(profile.completedLoansCipher, FHE.asEuint32(1));
+        profile.activeLoansCipher = FHE.sub(profile.activeLoansCipher, FHE.asEuint32(1));
 
         // Bonus on reputation
-        ebool canIncrease = TFHE.lt(profile.reputationScoreCipher, TFHE.asEuint8(90));
-        profile.reputationScoreCipher = TFHE.select(
+        ebool canIncrease = FHE.lt(profile.reputationScoreCipher, FHE.asEuint8(90));
+        profile.reputationScoreCipher = FHE.select(
             canIncrease,
-            TFHE.add(profile.reputationScoreCipher, TFHE.asEuint8(10)),
-            TFHE.asEuint8(100)
+            FHE.add(profile.reputationScoreCipher, FHE.asEuint8(10)),
+            FHE.asEuint8(100)
         );
 
         // Update lender profiles
@@ -955,9 +980,9 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         for (uint i = 0; i < pool.lenders.length; i++) {
             address lender = pool.lenders[i];
             LenderProfile storage lenderProfile = lenders[lender];
-            lenderProfile.completedLoanCountCipher = TFHE.add(lenderProfile.completedLoanCountCipher, TFHE.asEuint32(1));
-            lenderProfile.activeLoanCountCipher = TFHE.sub(lenderProfile.activeLoanCountCipher, TFHE.asEuint32(1));
-            lenderProfile.currentExposureCipher = TFHE.sub(lenderProfile.currentExposureCipher, pool.contributionsCipher[lender]);
+            lenderProfile.completedLoanCountCipher = FHE.add(lenderProfile.completedLoanCountCipher, FHE.asEuint32(1));
+            lenderProfile.activeLoanCountCipher = FHE.sub(lenderProfile.activeLoanCountCipher, FHE.asEuint32(1));
+            lenderProfile.currentExposureCipher = FHE.sub(lenderProfile.currentExposureCipher, pool.contributionsCipher[lender]);
         }
 
         totalLoansCompleted++;
@@ -976,23 +1001,22 @@ contract CipheredMicroloanBazaar is SepoliaZamaFHEVMConfig, GatewayCaller {
         LoanPool storage pool = pools[loanId];
         require(!pool.isDistributed, "Already distributed");
 
-        uint64 totalInterest = uint64(Gateway.toUint256(pool.totalInterestCipher));
+        uint64 totalInterest = pool.totalInterestDecrypted;
 
         for (uint i = 0; i < pool.lenders.length; i++) {
             address lender = pool.lenders[i];
 
-            // Calculate proportional interest
-            uint64 contribution = uint64(Gateway.toUint256(pool.contributionsCipher[lender]));
+            // Calculate proportional interest (use decrypted contribution we already have)
+            uint64 contribution = pool.decryptedContributions[lender];
             uint64 lenderInterest = (totalInterest * contribution) / pool.totalPooledDecrypted;
 
             pool.interestEarned[lender] = lenderInterest;
-            pool.decryptedContributions[lender] = contribution;
 
             // Update lender profile
             LenderProfile storage lenderProfile = lenders[lender];
-            lenderProfile.totalInterestEarnedCipher = TFHE.add(
+            lenderProfile.totalInterestEarnedCipher = FHE.add(
                 lenderProfile.totalInterestEarnedCipher,
-                TFHE.asEuint64(lenderInterest)
+                FHE.asEuint64(lenderInterest)
             );
 
             emit InterestDistributed(loanId, lender, lenderInterest);
