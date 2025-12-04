@@ -6,16 +6,13 @@ import {
   CIPHERED_MICROLOAN_BAZAAR_ABI,
 } from '../contracts/CipheredMicroloanBazaar';
 import {
-  initializeFHEVM,
-  getFHEVMInstance,
+  initializeFHE,
   encryptUint64,
   encryptUint32,
   encryptUint16,
   encryptUint8,
-  toContractInput,
-  toProofBytes,
   isFheInitialized,
-} from '../lib/fhevm';
+} from '../lib/fhe';
 
 export interface LoanApplicationParams {
   // Amounts are entered in ETH on the UI. We scale them to integers before
@@ -81,10 +78,10 @@ export const useMicroloanContract = () => {
         console.log('[Contract Init] Creating provider...');
         const provider = new BrowserProvider(walletClient as any);
 
-        // Initialize FHEVM (no longer needs provider and chainId)
-        console.log('[Contract Init] Initializing FHEVM...');
-        await initializeFHEVM();
-        console.log('[Contract Init] FHEVM initialized successfully');
+        // Initialize FHE (no longer needs provider and chainId)
+        console.log('[Contract Init] Initializing FHE...');
+        await initializeFHE();
+        console.log('[Contract Init] FHE initialized successfully');
 
         // Get contract address - use chain.id to support network switching
         const contractAddress = CIPHERED_MICROLOAN_BAZAAR_ADDRESS[
@@ -126,7 +123,7 @@ export const useMicroloanContract = () => {
    * Submit a loan application with encrypted data
    */
   const submitLoanApplication = useCallback(
-    async (params: LoanApplicationParams, onProgress?: (message: string) => void) => {
+    async (params: LoanApplicationParams, onProgress?: (message: string, txHash?: string) => void) => {
       console.log('[Submit Loan] Checking initialization...', {
         hasContract: !!contract,
         isInitialized,
@@ -148,15 +145,11 @@ export const useMicroloanContract = () => {
         console.log('[Submit Loan] Checking FHE initialization...');
         if (!isFheInitialized()) {
           console.error('[Submit Loan] FHE not initialized, attempting to initialize...');
-          await initializeFHEVM();
+          await initializeFHE();
           if (!isFheInitialized()) {
             throw new Error('FHE initialization failed. Please refresh the page and try again.');
           }
         }
-
-        const contractAddress = CIPHERED_MICROLOAN_BAZAAR_ADDRESS[
-          chain.id as keyof typeof CIPHERED_MICROLOAN_BAZAAR_ADDRESS
-        ];
 
         onProgress?.('Encrypting requested amount...');
         // Scale ETH to 1e4 (0.0001 ETH units) to fit contract policy [1_000..100_000]
@@ -165,72 +158,51 @@ export const useMicroloanContract = () => {
         const requestedAmountScaled = Math.round(params.requestedAmount * ETH_SCALE);
         const monthlyRevenueScaled = Math.round(params.monthlyRevenue * ETH_SCALE);
 
-        // Encrypt all parameters
+        // Encrypt all parameters using new API (address as second param)
         onProgress?.('Encrypting loan term...');
-        const encTerm = await encryptUint32(
-          params.requestedTerm,
-          contractAddress,
-          address
-        );
+        const encTerm = await encryptUint32(params.requestedTerm, address as `0x${string}`);
+
         onProgress?.('Encrypting credit score...');
-        const encCredit = await encryptUint32(
-          params.creditScore,
-          contractAddress,
-          address
-        );
+        const encCredit = await encryptUint32(params.creditScore, address as `0x${string}`);
+
         onProgress?.('Encrypting monthly revenue...');
-        const encRevenue = await encryptUint32(
-          monthlyRevenueScaled,
-          contractAddress,
-          address
-        );
+        const encRevenue = await encryptUint32(monthlyRevenueScaled, address as `0x${string}`);
+
         onProgress?.('Encrypting payment history...');
-        const encHistory = await encryptUint16(
-          params.paymentHistory,
-          contractAddress,
-          address
-        );
+        const encHistory = await encryptUint16(params.paymentHistory, address as `0x${string}`);
+
         onProgress?.('Encrypting past defaults...');
-        const encDefaults = await encryptUint8(
-          params.pastDefaults,
-          contractAddress,
-          address
-        );
+        const encDefaults = await encryptUint8(params.pastDefaults, address as `0x${string}`);
+
         onProgress?.('Encrypting community score...');
-        const encCommunity = await encryptUint8(
-          params.communityScore,
-          contractAddress,
-          address
-        );
+        const encCommunity = await encryptUint8(params.communityScore, address as `0x${string}`);
 
         // Encrypt amount last
-        const encAmount = await encryptUint64(
-          requestedAmountScaled,
-          contractAddress,
-          address
-        );
+        const encAmount = await encryptUint64(requestedAmountScaled, address as `0x${string}`);
 
         // Submit transaction with encrypted data
         onProgress?.('Requesting wallet confirmation...');
         const tx = await contract.submitLoanApplication(
-          toContractInput(encAmount.data),
-          toProofBytes(encAmount.signature),
-          toContractInput(encTerm.data),
-          toProofBytes(encTerm.signature),
-          toContractInput(encCredit.data),
-          toProofBytes(encCredit.signature),
-          toContractInput(encRevenue.data),
-          toProofBytes(encRevenue.signature),
-          toContractInput(encHistory.data),
-          toProofBytes(encHistory.signature),
-          toContractInput(encDefaults.data),
-          toProofBytes(encDefaults.signature),
-          toContractInput(encCommunity.data),
-          toProofBytes(encCommunity.signature),
+          encAmount.handle,
+          encAmount.proof,
+          encTerm.handle,
+          encTerm.proof,
+          encCredit.handle,
+          encCredit.proof,
+          encRevenue.handle,
+          encRevenue.proof,
+          encHistory.handle,
+          encHistory.proof,
+          encDefaults.handle,
+          encDefaults.proof,
+          encCommunity.handle,
+          encCommunity.proof,
           params.purpose
         );
 
-        onProgress?.('Transaction sent. Waiting for confirmations...');
+        const txHash = tx.hash;
+        onProgress?.('Transaction sent. Waiting for confirmations...', txHash);
+
         const receipt = await tx.wait();
         console.log('Loan application submitted:', receipt);
 
@@ -241,7 +213,7 @@ export const useMicroloanContract = () => {
 
         const loanId = event ? BigInt(event.topics[1]) : null;
 
-        return { receipt, loanId };
+        return { receipt, loanId, txHash };
       } catch (error) {
         console.error('Error submitting loan application:', error);
         throw error;
@@ -257,40 +229,41 @@ export const useMicroloanContract = () => {
    * Fund a loan with encrypted amount
    */
   const fundLoan = useCallback(
-    async (loanId: number, amount: number) => {
+    async (loanId: number, amount: number, onProgress?: (message: string, txHash?: string) => void) => {
       if (!contract || !isInitialized || !address || !chain) {
         throw new Error('Contract not initialized');
       }
 
       setIsLoading(true);
       try {
+        onProgress?.('Initializing FHE...');
         if (!isFheInitialized()) {
-          throw new Error('FHE not initialized');
+          await initializeFHE();
+          if (!isFheInitialized()) {
+            throw new Error('FHE not initialized');
+          }
         }
 
-        const contractAddress = CIPHERED_MICROLOAN_BAZAAR_ADDRESS[
-          chain.id as keyof typeof CIPHERED_MICROLOAN_BAZAAR_ADDRESS
-        ];
-
+        onProgress?.('Encrypting funding amount...');
         // Scale ETH -> 1e4 integer
         const ETH_SCALE = 10_000;
         const amountScaled = Math.round(amount * ETH_SCALE);
-        const encAmount = await encryptUint64(
-          amountScaled,
-          contractAddress,
-          address
-        );
+        const encAmount = await encryptUint64(amountScaled, address as `0x${string}`);
 
+        onProgress?.('Requesting wallet confirmation...');
         const tx = await contract.fundLoan(
           loanId,
-          toContractInput(encAmount.data),
-          toProofBytes(encAmount.signature)
+          encAmount.handle,
+          encAmount.proof
         );
+
+        const txHash = tx.hash;
+        onProgress?.('Transaction sent. Waiting for confirmations...', txHash);
 
         const receipt = await tx.wait();
         console.log('Loan funded:', receipt);
 
-        return receipt;
+        return { receipt, txHash };
       } catch (error) {
         console.error('Error funding loan:', error);
         throw error;
@@ -305,40 +278,41 @@ export const useMicroloanContract = () => {
    * Make a loan payment with encrypted amount
    */
   const makePayment = useCallback(
-    async (loanId: number, amount: number) => {
+    async (loanId: number, amount: number, onProgress?: (message: string, txHash?: string) => void) => {
       if (!contract || !isInitialized || !address || !chain) {
         throw new Error('Contract not initialized');
       }
 
       setIsLoading(true);
       try {
+        onProgress?.('Initializing FHE...');
         if (!isFheInitialized()) {
-          throw new Error('FHE not initialized');
+          await initializeFHE();
+          if (!isFheInitialized()) {
+            throw new Error('FHE not initialized');
+          }
         }
 
-        const contractAddress = CIPHERED_MICROLOAN_BAZAAR_ADDRESS[
-          chain.id as keyof typeof CIPHERED_MICROLOAN_BAZAAR_ADDRESS
-        ];
-
+        onProgress?.('Encrypting payment amount...');
         // Scale ETH -> 1e4 integer
         const ETH_SCALE = 10_000;
         const amountScaled = Math.round(amount * ETH_SCALE);
-        const encAmount = await encryptUint64(
-          amountScaled,
-          contractAddress,
-          address
-        );
+        const encAmount = await encryptUint64(amountScaled, address as `0x${string}`);
 
+        onProgress?.('Requesting wallet confirmation...');
         const tx = await contract.makePayment(
           loanId,
-          toContractInput(encAmount.data),
-          toProofBytes(encAmount.signature)
+          encAmount.handle,
+          encAmount.proof
         );
+
+        const txHash = tx.hash;
+        onProgress?.('Transaction sent. Waiting for confirmations...', txHash);
 
         const receipt = await tx.wait();
         console.log('Payment made:', receipt);
 
-        return receipt;
+        return { receipt, txHash };
       } catch (error) {
         console.error('Error making payment:', error);
         throw error;

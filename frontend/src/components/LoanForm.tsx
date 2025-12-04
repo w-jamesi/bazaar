@@ -3,12 +3,18 @@ import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { toast } from 'sonner';
 import { useAccount } from 'wagmi';
 import { Loader2, Shield } from 'lucide-react';
 import { useMicroloanContract } from '../hooks/useMicroloanContract';
+import {
+  showTxPending,
+  showTxSuccess,
+  showTxError,
+  showTxRejected,
+  isUserRejection,
+} from '../lib/txToast';
 
 const LoanForm = () => {
   const { address, isConnected } = useAccount();
@@ -44,6 +50,8 @@ const LoanForm = () => {
     // Yield to the browser so the overlay renders before encryption begins
     await new Promise((r) => setTimeout(r, 0));
 
+    let txHash: string | null = null;
+
     try {
       // Submit loan application with encrypted data
       const result = await submitLoanApplication({
@@ -55,13 +63,23 @@ const LoanForm = () => {
         pastDefaults: Number(pastDefaults),
         communityScore: Number(communityScore),
         purpose: Number(purpose),
-      }, (msg) => setProgress(msg));
+      }, (msg, hash) => {
+        setProgress(msg);
+        // Show pending toast when transaction is sent
+        if (hash && !txHash) {
+          txHash = hash;
+          showTxPending(txHash, 'Submitting Loan Application');
+        }
+      });
 
+      txHash = result.txHash;
       console.log('Loan application submitted:', result);
       console.log('Loan ID:', result.loanId?.toString());
 
-      toast.success(
-        `Loan application submitted! Loan ID: ${result.loanId?.toString() || 'N/A'}. Your data is protected by FHE encryption.`
+      // Show success toast with tx link
+      showTxSuccess(
+        txHash,
+        `Loan #${result.loanId?.toString() || 'N/A'} submitted successfully!`
       );
 
       // Reset form
@@ -71,8 +89,12 @@ const LoanForm = () => {
       setPurpose('0');
     } catch (error: any) {
       console.error('Error submitting loan:', error);
-      const reason = error?.reason || error?.shortMessage || error?.message;
-      toast.error(`Submission failed: ${reason || 'Please try again'}`);
+
+      if (isUserRejection(error)) {
+        showTxRejected();
+      } else {
+        showTxError(txHash, error, 'Loan Submission Failed');
+      }
     } finally {
       setIsSubmitting(false);
       setProgress('');

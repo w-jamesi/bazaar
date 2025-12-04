@@ -6,6 +6,13 @@ import { Loader2, TrendingUp, Calendar, DollarSign, AlertCircle } from 'lucide-r
 import { useMicroloanContract, LoanInfo, EvaluationInfo } from '../hooks/useMicroloanContract';
 import { useAccount } from 'wagmi';
 import { toast } from 'sonner';
+import {
+  showTxPending,
+  showTxSuccess,
+  showTxError,
+  showTxRejected,
+  isUserRejection,
+} from '../lib/txToast';
 
 const LOAN_STATUS_LABELS = [
   'Draft', 'Submitted', 'Credit Check', 'Risk Assessment',
@@ -108,15 +115,32 @@ const LoanList = () => {
     }
 
     setFundingLoanId(loanId);
+    let txHash: string | null = null;
+
     try {
-      await fundLoan(loanId, Number(amount));
-      toast.success(`Successfully funded loan #${loanId} with ${amount} ETH!`);
+      const result = await fundLoan(loanId, Number(amount), (msg, hash) => {
+        // Show pending toast when transaction is sent
+        if (hash && !txHash) {
+          txHash = hash;
+          showTxPending(txHash, `Funding Loan #${loanId}`);
+        }
+      });
+
+      txHash = result.txHash;
+
+      // Show success toast with tx link
+      showTxSuccess(txHash, `Successfully funded Loan #${loanId} with ${amount} ETH!`);
 
       // Reload loans
       await loadLoans();
     } catch (error: any) {
       console.error('Error funding loan:', error);
-      toast.error(`Funding failed: ${error.message || 'Please try again'}`);
+
+      if (isUserRejection(error)) {
+        showTxRejected();
+      } else {
+        showTxError(txHash, error, `Failed to fund Loan #${loanId}`);
+      }
     } finally {
       setFundingLoanId(null);
     }

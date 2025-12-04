@@ -1,245 +1,397 @@
-# 🔐 CipheredMicroloan Bazaar
+# Bazaar
 
-> **Privacy-First Microloan Marketplace Powered by Fully Homomorphic Encryption**
+**Privacy-Preserving Decentralized Microloan Platform Built on Zama's Fully Homomorphic Encryption (FHE)**
 
-A revolutionary decentralized lending platform that enables secure, private microloans for underserved communities worldwide. Built on Zama's cutting-edge FHE technology, this platform ensures complete financial privacy while maintaining transparent and fair lending practices.
+Bazaar is a decentralized lending protocol that leverages Fully Homomorphic Encryption to enable private credit assessment and loan processing. Unlike traditional DeFi lending platforms where financial data is publicly visible on-chain, Bazaar ensures that sensitive borrower information—credit scores, income levels, and payment history—remains encrypted throughout the entire loan lifecycle while still enabling automated risk evaluation and loan decisions.
 
-## 🌟 **Key Features**
-
-### 🔒 **Privacy by Design**
-- **Fully Homomorphic Encryption (FHE)**: All sensitive financial data remains encrypted during processing
-- **Zero-Knowledge Lending**: Lenders can assess risk without accessing personal financial information
-- **Decentralized Privacy**: No central authority can view or control user data
-
-### 💰 **Smart Lending Infrastructure**
-- **Multi-Lender Pooling**: Multiple investors can fund a single loan, reducing individual risk
-- **Automated Credit Scoring**: AI-powered risk assessment using encrypted data
-- **Flexible Repayment**: Monthly installment plans with transparent interest calculation
-- **Global Accessibility**: Cross-border lending without traditional banking intermediaries
-
-### 🎯 **User-Centric Design**
-- **Intuitive Interface**: Clean, responsive design optimized for mobile and desktop
-- **Real-Time Updates**: Live loan status tracking and funding progress
-- **Multi-Language Support**: English interface with plans for global localization
-- **Wallet Integration**: Seamless connection with MetaMask and other Web3 wallets
-
-## 🏗️ **System Architecture**
-
-```mermaid
-graph TB
-    subgraph "Frontend Layer"
-        A[React + TypeScript UI]
-        B[FHE Encryption Client]
-        C[Wallet Integration]
-    end
-    
-    subgraph "Blockchain Layer"
-        D[Smart Contract]
-        E[FHEVM Runtime]
-        F[Encrypted Data Storage]
-    end
-    
-    subgraph "Privacy Layer"
-        G[Zama FHE SDK]
-        H[Encrypted Computation]
-        I[Zero-Knowledge Proofs]
-    end
-    
-    A --> B
-    B --> G
-    C --> D
-    D --> E
-    E --> F
-    G --> H
-    H --> I
-```
-
-### **Core Components**
-
-#### 🧠 **Smart Contract System**
-- **Loan Lifecycle Management**: 9-state workflow from application to completion
-- **Role-Based Access Control**: Owner, Credit Analyst, Loan Officer, Collection Agent
-- **Encrypted Data Processing**: All computations performed on encrypted data
-- **Multi-Signature Security**: Critical operations require multiple approvals
-
-#### 🔐 **Privacy Engine**
-- **Client-Side Encryption**: Data encrypted before leaving user's device
-- **Homomorphic Operations**: Risk assessment without decryption
-- **Secure Key Management**: Distributed key generation and management
-- **Audit Trail**: Transparent transaction history while preserving privacy
-
-#### 💻 **Frontend Application**
-- **Modern React Architecture**: Built with TypeScript for type safety
-- **Responsive Design**: Optimized for mobile-first experience
-- **Real-Time Updates**: WebSocket integration for live data
-- **Accessibility**: WCAG 2.1 compliant interface
-
-## 🚀 **Technology Stack**
-
-| Layer | Technology | Purpose |
-|-------|------------|---------|
-| **Blockchain** | Solidity 0.8.24 + FHEVM | Smart contract execution |
-| **Privacy** | Zama FHE SDK 0.2.0 | Homomorphic encryption |
-| **Frontend** | React 18 + TypeScript | User interface |
-| **Web3** | Wagmi + RainbowKit | Wallet integration |
-| **Styling** | Tailwind CSS + shadcn/ui | Modern UI components |
-| **Build** | Vite + Hardhat | Development toolchain |
-| **Network** | Sepolia Testnet | Ethereum test network |
-
-## 📈 **Development Roadmap**
-
-### **Phase 1: Core Prototype (2025 Q4)** ✅ **Current Phase**
-- [x] Smart contract deployment on Sepolia testnet
-- [x] Basic loan application system
-- [x] Multi-lender funding mechanism
-- [x] Encrypted data processing with FHE
-- [x] Public demo platform (no real funds)
-
-### **Phase 2: FHE Credit Scoring MVP (2026 H1)**
-- [ ] On-chain FHE credit scoring model
-- [ ] Privacy-preserving risk assessment
-- [ ] Automated loan approval system
-- [ ] Dynamic interest rate calculation
-- [ ] Gateway-assisted decryption for risk tiers
-
-### **Phase 3: Advanced Features (2026 H2)**
-- [ ] Mobile application development
-- [ ] Cross-chain compatibility
-- [ ] Advanced analytics dashboard
-- [ ] Integration with traditional finance
-- [ ] Enhanced user experience
-
-### **Phase 4: Production Launch (2027)**
-- [ ] Mainnet deployment
-- [ ] Security audit completion
-- [ ] Regulatory compliance
-- [ ] Community governance (DAO)
-- [ ] Global market expansion
-
-### **Future Vision (2027+)**
-- [ ] **AI-Powered Risk Assessment**: Machine learning models trained on encrypted data
-- [ ] **Cross-Border Compliance**: Automated regulatory compliance across jurisdictions
-- [ ] **Institutional Integration**: Bridge between DeFi and traditional finance
-- [ ] **Advanced Privacy Features**: Zero-knowledge proofs for enhanced privacy
-- [ ] **Global Financial Inclusion**: Serving unbanked populations worldwide
-
-## 🛠️ **Quick Start**
-
-### **Prerequisites**
-- Node.js 18+ 
-- MetaMask wallet
-- Sepolia ETH for gas fees
-
-### **Installation**
-
-```bash
-# Clone the repository
-git clone https://github.com/william2332-limf/CipheredMicroloan-Bazaar.git
-cd CipheredMicroloan-Bazaar
-
-# Install dependencies
-npm install
-cd frontend && npm install
-
-# Start development server
-npm run dev
-```
-
-### **Configuration**
-> **Note**: All configuration is hardcoded for simplicity. The deployed contract address `0x8E5ed8d77cfCC22c05af221C9b08Ec021aAdbF4d` is already configured for Sepolia testnet.
-
-## 📱 **User Guide**
-
-### **For Borrowers**
-1. **Connect Wallet**: Link your MetaMask wallet to the platform
-2. **Apply for Loan**: Fill out the encrypted application form
-3. **Credit Assessment**: Wait for automated risk evaluation
-4. **Receive Funds**: Get approved loans directly to your wallet
-5. **Make Payments**: Use the repayment interface for monthly installments
-
-### **For Lenders**
-1. **Browse Opportunities**: View available loan requests
-2. **Assess Risk**: Review encrypted risk profiles
-3. **Fund Loans**: Contribute to loans with desired amounts
-4. **Earn Returns**: Receive interest payments automatically
-5. **Track Portfolio**: Monitor your lending performance
-
-### **For Credit Analysts**
-1. **Review Applications**: Access encrypted loan applications
-2. **Request Evaluations**: Trigger automated credit assessments
-3. **Approve/Reject**: Make lending decisions based on risk data
-4. **Monitor Performance**: Track loan performance and defaults
-
-## 🔒 **Security & Privacy**
-
-### **Privacy Protection**
-- **End-to-End Encryption**: Data encrypted from user input to blockchain storage
-- **Homomorphic Computation**: Risk assessment without data exposure
-- **Zero-Knowledge Architecture**: No party can access raw financial data
-- **Decentralized Storage**: No single point of failure or data breach
-
-### **Security Measures**
-- **Smart Contract Audits**: Regular security reviews and penetration testing
-- **Role-Based Access**: Granular permissions for different user types
-- **Multi-Signature Operations**: Critical functions require multiple approvals
-- **Immutable Records**: All transactions recorded on blockchain
-
-## 🌍 **Social Impact**
-
-### **Financial Inclusion**
-- **Global Access**: Serve unbanked populations worldwide
-- **Low Barriers**: Minimal requirements for loan applications
-- **Fair Rates**: Transparent, competitive interest rates
-- **Community Support**: Peer-to-peer lending with social impact
-
-### **Economic Empowerment**
-- **Small Business Growth**: Enable entrepreneurship in developing regions
-- **Education Funding**: Support educational expenses and skill development
-- **Emergency Relief**: Provide quick access to funds during crises
-- **Sustainable Development**: Align with UN Sustainable Development Goals
-
-## 📊 **Current Status**
-
-| Component | Status | Details |
-|-----------|--------|---------|
-| **Smart Contract** | ✅ Complete | Deployed on Sepolia testnet |
-| **FHE Integration** | ✅ Complete | Zama SDK 0.2.0 integrated |
-| **Frontend UI** | ✅ Complete | English interface, responsive design |
-| **Wallet Integration** | ✅ Complete | MetaMask and Web3 wallet support |
-| **Testing** | 🔄 In Progress | End-to-end functionality testing |
-| **Security Audit** | 📋 Planned | Third-party security review |
-| **Mainnet Deployment** | 📋 Planned | Production deployment |
-
-## 🤝 **Contributing**
-
-We welcome contributions from developers, researchers, and community members:
-
-### **Development Areas**
-- **Smart Contract Features**: New lending mechanisms and risk models
-- **Frontend Improvements**: UI/UX enhancements and accessibility
-- **Security Research**: Vulnerability assessments and privacy analysis
-- **Documentation**: Technical guides and user tutorials
-
-### **Getting Involved**
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-5. Join our community discussions
-
-## 📄 **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 **Acknowledgments**
-
-- **Zama Team**: For pioneering FHE technology and providing the SDK
-- **Ethereum Foundation**: For the robust blockchain infrastructure
-- **Open Source Community**: For the amazing tools and libraries
-- **Beta Testers**: For valuable feedback and bug reports
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-bazaar--fhe.vercel.app-blue)](https://bazaar-fhe.vercel.app)
+[![Network](https://img.shields.io/badge/Network-Sepolia%20Testnet-yellow)](https://sepolia.etherscan.io)
+[![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636)](https://docs.soliditylang.org/)
+[![fhEVM](https://img.shields.io/badge/fhEVM-0.9.1-00d4aa)](https://docs.zama.ai/fhevm)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ---
 
-**Built with ❤️ for a more private, inclusive, and equitable financial future.**
+## Table of Contents
 
-*Empowering communities through privacy-preserving technology.*
+- [Overview](#overview)
+- [The Problem We Solve](#the-problem-we-solve)
+- [Technical Architecture](#technical-architecture)
+- [Smart Contract Design](#smart-contract-design)
+- [FHE Implementation Details](#fhe-implementation-details)
+- [Technology Stack](#technology-stack)
+- [Getting Started](#getting-started)
+- [Contract Deployment](#contract-deployment)
+- [Frontend Integration](#frontend-integration)
+- [Security Considerations](#security-considerations)
+- [License](#license)
+
+---
+
+## Overview
+
+Bazaar implements a complete microloan marketplace where:
+
+1. **Borrowers** submit loan applications with encrypted financial data (credit score, monthly revenue, payment history)
+2. **The smart contract** performs credit evaluation entirely on encrypted data using FHE operations
+3. **Lenders** can fund loans based on encrypted risk assessments without seeing raw borrower data
+4. **Repayments** are tracked with encrypted amounts, maintaining privacy throughout the loan lifecycle
+
+All sensitive computations—risk scoring, loan amount approval, interest rate calculation—happen on encrypted ciphertexts, ensuring that neither the blockchain validators, other users, nor even the contract owner can access plaintext financial information.
+
+## The Problem We Solve
+
+### Traditional DeFi Lending Limitations
+
+| Problem | Traditional Approach | Bazaar's Solution |
+|---------|---------------------|-------------------|
+| **Privacy Exposure** | All loan amounts and addresses visible on-chain | Encrypted loan data using FHE |
+| **Credit Assessment** | Over-collateralization or centralized oracles | On-chain encrypted credit scoring |
+| **Data Exploitation** | Financial behavior trackable and exploitable | Zero-knowledge financial profiles |
+| **Regulatory Risk** | Public financial data creates compliance issues | Privacy-preserving by design |
+
+### Why FHE for Microloans?
+
+Microloans serve underbanked populations who are particularly vulnerable to:
+- **Identity theft** from exposed financial data
+- **Discrimination** based on visible transaction patterns
+- **Predatory targeting** using on-chain financial analysis
+
+FHE enables the computational benefits of smart contracts while preserving the privacy guarantees that vulnerable borrowers require.
+
+## Technical Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              FRONTEND LAYER                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  React 18 + TypeScript │ Wagmi + RainbowKit │ Zama Relayer SDK v0.3.0      │
+│                                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
+│  │ Loan Form    │  │ Wallet       │  │ FHE Client   │  │ TX Toast     │    │
+│  │ Component    │  │ Connection   │  │ Encryption   │  │ Notifications│    │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────────────┘    │
+│         │                 │                 │                               │
+│         └─────────────────┼─────────────────┘                               │
+│                           ▼                                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                           ENCRYPTION LAYER                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   User Input ──► FHE.encrypt() ──► Ciphertext + Proof ──► Smart Contract   │
+│                                                                              │
+│   Encrypted Types: euint8, euint16, euint32, euint64                        │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                           BLOCKCHAIN LAYER                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ┌─────────────────────────────────────────────────────────────────────┐   │
+│   │              CipheredMicroloanBazaar.sol (Sepolia)                  │   │
+│   │                                                                      │   │
+│   │   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                │   │
+│   │   │ Loan        │  │ Credit      │  │ Repayment   │                │   │
+│   │   │ Application │  │ Evaluation  │  │ Tracking    │                │   │
+│   │   │ (Encrypted) │  │ (FHE Ops)   │  │ (Encrypted) │                │   │
+│   │   └─────────────┘  └─────────────┘  └─────────────┘                │   │
+│   │                                                                      │   │
+│   │   FHE Operations: add, sub, mul, div, gt, lt, select                │   │
+│   └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│   Contract: 0x7BCA26b53C58c912a5bd57314F8a17a22900C0a5                      │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Smart Contract Design
+
+### Loan Lifecycle State Machine
+
+The contract implements a 10-state loan lifecycle ensuring proper workflow enforcement:
+
+```
+┌─────────┐    submit    ┌───────────┐   evaluate   ┌─────────────┐
+│  Draft  │ ──────────►  │ Submitted │ ───────────► │ CreditCheck │
+└─────────┘              └───────────┘              └──────┬──────┘
+                                                          │
+                                                          ▼
+┌───────────┐   disburse  ┌──────────┐    approve   ┌─────────────────┐
+│ Disbursed │ ◄────────── │ Approved │ ◄─────────── │ RiskAssessment  │
+└─────┬─────┘             └──────────┘              └─────────────────┘
+      │
+      ▼
+┌────────┐    repay     ┌──────────┐    complete   ┌───────────┐
+│ Active │ ───────────► │ Repaying │ ────────────► │ Completed │
+└────┬───┘              └────┬─────┘               └───────────┘
+     │                       │
+     │      default          │ default
+     └───────────────────────┴──────────► ┌───────────┐
+                                          │ Defaulted │
+                                          └───────────┘
+```
+
+### Role-Based Access Control
+
+| Role | Permissions |
+|------|-------------|
+| **Owner** | System configuration, role management, emergency controls |
+| **Credit Analyst** | Initiate credit evaluations, access encrypted scores |
+| **Loan Officer** | Approve/reject loans, set interest rates, disburse funds |
+| **Collection Agent** | Handle defaults, manage recovery process |
+
+### Core Data Structures
+
+```solidity
+struct LoanApplication {
+    uint256 loanId;
+    address borrower;
+    euint64 requestedAmountCipher;      // Encrypted loan amount
+    euint32 requestedTermCipher;        // Encrypted term in days
+    euint32 creditScoreCipher;          // Encrypted credit score (300-850)
+    euint32 monthlyRevenueCipher;       // Encrypted monthly income
+    euint16 paymentHistoryCipher;       // Encrypted successful payments
+    euint8 pastDefaultsCipher;          // Encrypted default count
+    euint8 communityScoreCipher;        // Encrypted reputation (0-10)
+    LoanPurpose purpose;
+    LoanStatus status;
+    // ... timestamps and metadata
+}
+
+struct CreditEvaluation {
+    euint32 computedScoreCipher;        // FHE-computed credit score
+    euint8 riskTierCipher;              // Encrypted risk classification
+    euint64 approvedAmountCipher;       // Encrypted approved amount
+    euint16 interestRateCipher;         // Encrypted interest rate (bps)
+    bool evaluationComplete;
+    bool decryptionRequested;
+}
+```
+
+## FHE Implementation Details
+
+### Encrypted Operations
+
+Bazaar uses Zama's fhEVM to perform computations on encrypted data:
+
+```solidity
+// Credit score computation (simplified)
+function _computeCreditScore(uint256 loanId) internal {
+    LoanApplication storage app = loans[loanId];
+
+    // All operations performed on ciphertexts
+    euint32 baseScore = app.creditScoreCipher;
+
+    // Adjust for payment history (encrypted comparison and arithmetic)
+    ebool hasGoodHistory = FHE.gt(app.paymentHistoryCipher, FHE.asEuint16(10));
+    euint32 historyBonus = FHE.select(hasGoodHistory, FHE.asEuint32(50), FHE.asEuint32(0));
+
+    // Penalize for past defaults
+    euint32 defaultPenalty = FHE.mul(FHE.asEuint32(app.pastDefaultsCipher), FHE.asEuint32(30));
+
+    // Final encrypted score
+    euint32 finalScore = FHE.sub(FHE.add(baseScore, historyBonus), defaultPenalty);
+
+    evaluations[loanId].computedScoreCipher = finalScore;
+}
+```
+
+### Encrypted Type Usage
+
+| Data Field | Encrypted Type | Range | Purpose |
+|------------|---------------|-------|---------|
+| Loan Amount | `euint64` | 0.1 - 50 ETH | Requested/approved amounts |
+| Credit Score | `euint32` | 300 - 850 | Creditworthiness metric |
+| Monthly Revenue | `euint32` | Variable | Income verification |
+| Loan Term | `euint32` | 30 - 720 days | Repayment period |
+| Payment History | `euint16` | 0 - 65535 | Successful payment count |
+| Past Defaults | `euint8` | 0 - 255 | Historical default count |
+| Community Score | `euint8` | 0 - 10 | Reputation rating |
+| Interest Rate | `euint16` | 500 - 5000 bps | Annual interest rate |
+
+### Client-Side Encryption Flow
+
+```typescript
+// Frontend encryption using Zama Relayer SDK
+const encryptLoanApplication = async (data: LoanData, userAddress: Address) => {
+  const instance = await createInstance(SepoliaConfig);
+
+  // Create encrypted input for contract
+  const input = instance.createEncryptedInput(CONTRACT_ADDRESS, userAddress);
+
+  // Add each field with appropriate bit width
+  input.add64(BigInt(data.requestedAmount));  // euint64
+  input.add32(data.requestedTerm);             // euint32
+  input.add32(data.creditScore);               // euint32
+  input.add32(data.monthlyRevenue);            // euint32
+  input.add16(data.paymentHistory);            // euint16
+  input.add8(data.pastDefaults);               // euint8
+  input.add8(data.communityScore);             // euint8
+
+  const { handles, inputProof } = await input.encrypt();
+
+  return { handles, inputProof };
+};
+```
+
+## Technology Stack
+
+### Smart Contracts
+
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| Language | Solidity | 0.8.24 |
+| FHE Library | @fhevm/solidity | 0.9.1 |
+| Development | Hardhat | 2.22.x |
+| Testing | Hardhat + Chai | - |
+
+### Frontend
+
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| Framework | React | 18.3.x |
+| Language | TypeScript | 5.8.x |
+| Build Tool | Vite | 5.4.x |
+| Styling | Tailwind CSS | 3.4.x |
+| Components | shadcn/ui | - |
+| Web3 | Wagmi + Viem | 2.x |
+| Wallet UI | RainbowKit | 2.2.x |
+| FHE SDK | Zama Relayer SDK | 0.3.0-5 |
+
+### Infrastructure
+
+| Component | Service |
+|-----------|---------|
+| Network | Ethereum Sepolia Testnet |
+| Deployment | Vercel |
+| RPC | Public Sepolia endpoints |
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- Yarn or npm
+- MetaMask or compatible Web3 wallet
+- Sepolia testnet ETH ([Faucet](https://sepoliafaucet.com))
+
+### Installation
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd Bazaar
+
+# Install contract dependencies
+yarn install
+
+# Install frontend dependencies
+cd frontend && yarn install
+```
+
+### Environment Configuration
+
+Create `.env` in the root directory:
+
+```env
+SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+PRIVATE_KEY=0x_your_deployer_private_key
+```
+
+### Development
+
+```bash
+# Compile contracts
+yarn compile
+
+# Run frontend development server
+cd frontend && yarn dev
+```
+
+## Contract Deployment
+
+### Deploy to Sepolia
+
+```bash
+SEPOLIA_RPC_URL="https://ethereum-sepolia-rpc.publicnode.com" \
+npx hardhat run scripts/deploy.ts --network sepolia
+```
+
+### Post-Deployment Setup
+
+```bash
+# Set up roles (Credit Analyst, Loan Officer, Collection Agent)
+SEPOLIA_RPC_URL="https://ethereum-sepolia-rpc.publicnode.com" \
+npx hardhat run scripts/setup-roles.ts --network sepolia
+```
+
+### Current Deployment
+
+| Network | Contract Address |
+|---------|-----------------|
+| Sepolia | `0x7BCA26b53C58c912a5bd57314F8a17a22900C0a5` |
+
+## Frontend Integration
+
+### FHE SDK Integration
+
+The frontend loads Zama's Relayer SDK via CDN and initializes it for client-side encryption:
+
+```html
+<!-- index.html -->
+<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
+<meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
+<script src="https://cdn.zama.org/relayer-sdk-js/0.3.0-5/relayer-sdk-js.umd.cjs" defer></script>
+```
+
+### Transaction Notifications
+
+All blockchain transactions display real-time status with Etherscan links:
+
+- **Pending**: Shows spinner with transaction hash link
+- **Success**: Confirmation with explorer link
+- **Failed**: Error message with transaction details
+- **Rejected**: User wallet rejection notification
+
+### Key Frontend Files
+
+```
+frontend/src/
+├── lib/
+│   ├── fhe.ts              # FHE encryption utilities
+│   └── txToast.tsx         # Transaction notification system
+├── hooks/
+│   └── useMicroloanContract.ts  # Contract interaction hook
+├── components/
+│   ├── LoanForm.tsx        # Loan application form
+│   └── LoanList.tsx        # Available loans display
+└── config/
+    └── wagmi.ts            # Wallet configuration (Sepolia only)
+```
+
+## Security Considerations
+
+### FHE Security Model
+
+- **Encryption**: All sensitive data encrypted client-side before transmission
+- **Computation**: Smart contract operates only on ciphertexts
+- **Decryption**: Only authorized parties can request decryption via Gateway
+
+### Smart Contract Security
+
+- **Access Control**: Role-based permissions for sensitive operations
+- **State Machine**: Enforced loan lifecycle prevents invalid state transitions
+- **Input Validation**: All encrypted inputs validated with proofs
+
+### Known Limitations
+
+1. **Testnet Only**: Current deployment is on Sepolia testnet
+2. **Gas Costs**: FHE operations are computationally expensive
+3. **Decryption Latency**: Gateway decryption introduces delays
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+**Bazaar** - Enabling private, accessible microfinance through homomorphic encryption.
